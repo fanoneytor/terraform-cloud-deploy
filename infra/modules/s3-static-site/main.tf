@@ -44,20 +44,29 @@ resource "aws_s3_object" "website_other_files" {
   etag         = filemd5("${var.website_source_path}/${each.value}")
 }
 
-# Recurso para subir index.html, inyectando la URL de la API
+# Recurso para subir index.html (sin inyección de variables)
 resource "aws_s3_object" "website_index" {
   bucket       = aws_s3_bucket.static_site.id
   key          = "index.html"
+  source       = "${var.website_source_path}/index.html"
   content_type = "text/html"
-  content = templatefile("${var.website_source_path}/index.html", {
-    api_url                 = var.api_gateway_url
-    cognito_user_pool_id    = var.cognito_user_pool_id
-    cognito_app_client_id = var.cognito_app_client_id
+  etag         = filemd5("${var.website_source_path}/index.html")
+}
+
+# Recurso para subir config.js (con inyección de variables)
+resource "aws_s3_object" "website_config_js" {
+  bucket       = aws_s3_bucket.static_site.id
+  key          = "config.js"
+  content_type = "application/javascript"
+  content = templatefile("${path.module}/config.js.tpl", {
+    api_url                 = var.api_gateway_url,
+    cognito_user_pool_id    = var.cognito_user_pool_id,
+    cognito_app_client_id = var.cognito_app_client_id,
   })
-  etag = md5(templatefile("${var.website_source_path}/index.html", {
-    api_url                 = var.api_gateway_url
-    cognito_user_pool_id    = var.cognito_user_pool_id
-    cognito_app_client_id = var.cognito_app_client_id
+  etag = md5(templatefile("${path.module}/config.js.tpl", {
+    api_url                 = var.api_gateway_url,
+    cognito_user_pool_id    = var.cognito_user_pool_id,
+    cognito_app_client_id = var.cognito_app_client_id,
   }))
 }
 

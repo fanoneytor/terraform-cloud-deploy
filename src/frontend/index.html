@@ -34,7 +34,7 @@
 
             <section aria-labelledby="products-heading">
                 <h2 id="products-heading">Venta de Licencias de Software</h2>
-                <div id="product-grid" class="product-grid">
+                <div id="product-grid" class="product-grid hidden">
                     <p class="loader">Cargando productos...</p>
                 </div>
             </section>
@@ -103,28 +103,80 @@
     </div>
 
     <script>
+    /**
+     * @file Frontend application logic for NetSolutions E-Commerce.
+     * @author Gemini AI
+     * @version 1.0.0
+     */
+
     // Usamos un IIFE (Immediately Invoked Function Expression) para encapsular nuestro código
-    // y no contaminar el scope global.
+    // y no contaminar el scope global, mejorando la modularidad y evitando conflictos.
     ((window, document) => {
         'use strict';
 
-        // --- 1. CONFIGURACIÓN Y ESTADO --- //
-        const config = {
+        /**
+         * @namespace AppConfig
+         * @description Configuración global de la aplicación, inyectada por Terraform.
+         */
+        const AppConfig = {
             cognitoUserPoolId: '${cognito_user_pool_id}',
             cognitoClientId: '${cognito_app_client_id}',
             apiUrl: '${api_url}',
-            awsRegion: 'us-east-1'
+            awsRegion: 'us-east-1' // La región donde está el User Pool y la API Gateway
         };
 
-        const state = {
+        /**
+         * @namespace AppState
+         * @description Almacena el estado actual de la aplicación.
+         */
+        const AppState = {
             isLoggedIn: false,
             jwtToken: null,
             products: [],
-            user: null
+            user: null,
+
+            /**
+             * Carga el estado inicial desde el almacenamiento local (localStorage).
+             */
+            loadInitialState() {
+                const token = localStorage.getItem('jwtToken');
+                if (token) {
+                    this.jwtToken = token;
+                    this.isLoggedIn = true;
+                    this.user = { email: localStorage.getItem('userEmail') };
+                }
+            },
+
+            /**
+             * Guarda el estado de autenticación en el almacenamiento local.
+             * @param {object} authResult - Resultado de la autenticación de Cognito.
+             * @param {string} email - Correo electrónico del usuario.
+             */
+            saveLoginState(authResult, email) {
+                this.jwtToken = authResult.IdToken;
+                this.isLoggedIn = true;
+                this.user = { email };
+                localStorage.setItem('jwtToken', this.jwtToken);
+                localStorage.setItem('userEmail', email);
+            },
+
+            /**
+             * Limpia el estado de autenticación.
+             */
+            clearLoginState() {
+                this.isLoggedIn = false;
+                this.jwtToken = null;
+                this.user = null;
+                localStorage.removeItem('jwtToken');
+                localStorage.removeItem('userEmail');
+            }
         };
 
-        // --- 2. CACHÉ DE ELEMENTOS DEL DOM --- //
-        const dom = {
+        /**
+         * @namespace DOMCache
+         * @description Almacena referencias a elementos del DOM para evitar búsquedas repetidas.
+         */
+        const DOMCache = {
             authNav: document.getElementById('auth-nav'),
             loggedOutView: document.getElementById('logged-out-view'),
             loggedInView: document.getElementById('logged-in-view'),
@@ -137,57 +189,91 @@
                 form: document.getElementById('auth-form'),
                 confirmPassGroup: document.getElementById('confirm-password-group'),
                 submitButton: document.getElementById('auth-submit-button'),
-                error: document.getElementById('auth-error')
+                emailInput: document.getElementById('email'),
+                passwordInput: document.getElementById('password'),
+                confirmPasswordInput: document.getElementById('confirm-password'),
+                errorDisplay: document.getElementById('auth-error')
             },
             productModal: {
                 overlay: document.getElementById('product-modal'),
                 title: document.getElementById('product-modal-title'),
                 form: document.getElementById('product-form'),
-                error: document.getElementById('product-error'),
-                idInput: document.getElementById('product-id')
+                idInput: document.getElementById('product-id'),
+                nameInput: document.getElementById('product-name'),
+                descriptionInput: document.getElementById('product-description'),
+                categoryInput: document.getElementById('product-category'),
+                priceInput: document.getElementById('product-price'),
+                errorDisplay: document.getElementById('product-error')
             },
             toastContainer: document.getElementById('toast-container')
         };
 
-        // --- 3. LÓGICA DE UI (INTERFAZ DE USUARIO) --- //
-        const ui = {
+        /**
+         * @namespace UIManager
+         * @description Gestiona la lógica de la interfaz de usuario.
+         */
+        const UIManager = {
+            /**
+             * Actualiza la visibilidad de los elementos de autenticación y administración.
+             */
             updateAuthView() {
-                dom.loggedInView.classList.toggle('hidden', !state.isLoggedIn);
-                dom.loggedOutView.classList.toggle('hidden', state.isLoggedIn);
-                dom.adminControls.classList.toggle('hidden', !state.isLoggedIn);
-                if (state.isLoggedIn && state.user) {
-                    dom.userEmailSpan.textContent = state.user.email;
+                DOMCache.loggedInView.classList.toggle('hidden', !AppState.isLoggedIn);
+                DOMCache.loggedOutView.classList.toggle('hidden', AppState.isLoggedIn);
+                DOMCache.adminControls.classList.toggle('hidden', !AppState.isLoggedIn);
+                DOMCache.productGrid.classList.toggle('hidden', !AppState.isLoggedIn); // Ocultar/mostrar grid de productos
+                if (AppState.isLoggedIn && AppState.user) {
+                    DOMCache.userEmailSpan.textContent = AppState.user.email;
                 }
             },
+
+            /**
+             * Renderiza la lista de productos en la cuadrícula.
+             */
             renderProducts() {
-                if (state.products.length === 0) {
-                    dom.productGrid.innerHTML = '<p>No hay productos disponibles.</p>';
+                if (!AppState.products || AppState.products.length === 0) {
+                    DOMCache.productGrid.innerHTML = '<p>No hay productos disponibles.</p>';
                     return;
                 }
-                dom.productGrid.innerHTML = state.products.map(product => {
+                DOMCache.productGrid.innerHTML = AppState.products.map(product => {
                     const adminActions = '<div class="product-card-actions"><button class="btn-secondary" data-action="show-edit-product" data-id="' + product.id + '">Editar</button><button class="btn-danger" data-action="delete-product" data-id="' + product.id + '">Borrar</button></div>';
                     const userActions = '<button class="buy-button" data-action="purchase-product" data-id="' + product.id + '">Comprar Ahora</button>';
+
                     return (
                         '<div class="product-card">' +
                             '<div class="product-card-content">' +
                                 '<h3>' + product.name + '</h3>' +
                                 '<p>' + product.description + '</p>' +
                                 '<p class="product-price">$' + product.price + ' USD</p>' +
-                                (state.isLoggedIn ? adminActions : userActions) +
+                                (AppState.isLoggedIn ? adminActions : userActions) +
                             '</div>' +
                         '</div>'
                     );
                 }).join('');
             },
+
+            /**
+             * Muestra u oculta un modal.
+             * @param {object} modal - Objeto modal del DOMCache.
+             * @param {boolean} show - True para mostrar, false para ocultar.
+             */
             toggleModal(modal, show) {
                 modal.overlay.classList.toggle('hidden', !show);
-                if(show) modal.form.reset();
+                if(show) {
+                    modal.form.reset();
+                    modal.errorDisplay.classList.add('hidden');
+                }
             },
+
+            /**
+             * Muestra un mensaje de notificación temporal.
+             * @param {string} message - Mensaje a mostrar.
+             * @param {string} type - Tipo de mensaje ('success' o 'error').
+             */
             showToast(message, type = 'success') {
                 const toast = document.createElement('div');
                 toast.className = `toast $${type}`;
                 toast.textContent = message;
-                dom.toastContainer.appendChild(toast);
+                DOMCache.toastContainer.appendChild(toast);
                 setTimeout(() => toast.classList.add('show'), 10); // Animar entrada
                 setTimeout(() => {
                     toast.classList.remove('show');
@@ -196,17 +282,27 @@
             }
         };
 
-        // --- 4. LÓGICA DE API (CLIENTE HTTP) --- //
-        const api = {
+        /**
+         * @namespace APIClient
+         * @description Cliente HTTP para interactuar con la API Gateway.
+         */
+        const APIClient = {
+            /**
+             * Realiza una petición HTTP a la API.
+             * @param {string} endpoint - Ruta del endpoint (ej. '/products').
+             * @param {string} method - Método HTTP (GET, POST, PUT, DELETE).
+             * @param {object} body - Cuerpo de la petición para POST/PUT.
+             * @returns {Promise<object|null>} Respuesta de la API.
+             */
             async request(endpoint, method, body = null) {
                 const headers = { 'Content-Type': 'application/json' };
-                if (state.jwtToken) {
-                    headers['Authorization'] = state.jwtToken;
+                if (AppState.jwtToken) {
+                    headers['Authorization'] = AppState.jwtToken;
                 }
                 const options = { method, headers };
                 if (body) options.body = JSON.stringify(body);
 
-                const response = await fetch(config.apiUrl + endpoint, options);
+                const response = await fetch(AppConfig.apiUrl + endpoint, options);
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.message || `Error $${response.status}`);
@@ -219,200 +315,285 @@
             deleteProduct(id) { return this.request(`/products/$${id}`, 'DELETE'); }
         };
 
-        // --- 5. LÓGICA DE AUTENTICACIÓN (COGNITO) --- //
-        const auth = {
+        /**
+         * @namespace AuthManager
+         * @description Gestiona la lógica de autenticación con Amazon Cognito.
+         */
+        const AuthManager = {
             cognitoProvider: null,
+            /**
+             * Inicializa el proveedor de Cognito.
+             */
             init() {
-                AWS.config.update({ region: config.awsRegion });
+                AWS.config.update({ region: AppConfig.awsRegion });
                 this.cognitoProvider = new AWS.CognitoIdentityServiceProvider();
             },
+
+            /**
+             * Registra un nuevo usuario en Cognito.
+             * @param {string} email - Correo electrónico del usuario.
+             * @param {string} password - Contraseña del usuario.
+             * @returns {Promise<object>} Resultado del registro.
+             */
             signUp(email, password) {
                 return new Promise((resolve, reject) => {
                     this.cognitoProvider.signUp({
-                        ClientId: config.cognitoClientId,
+                        ClientId: AppConfig.cognitoClientId,
                         Username: email,
                         Password: password,
                         UserAttributes: [{ Name: 'email', Value: email }]
                     }, (err, data) => err ? reject(err) : resolve(data));
                 });
             },
+
+            /**
+             * Inicia sesión de un usuario en Cognito.
+             * @param {string} email - Correo electrónico del usuario.
+             * @param {string} password - Contraseña del usuario.
+             * @returns {Promise<object>} Resultado del inicio de sesión.
+             */
             signIn(email, password) {
                 return new Promise((resolve, reject) => {
                     this.cognitoProvider.initiateAuth({
                         AuthFlow: 'USER_SRP_AUTH',
-                        ClientId: config.cognitoClientId,
+                        ClientId: AppConfig.cognitoClientId,
                         AuthParameters: { USERNAME: email, PASSWORD: password }
                     }, (err, data) => err ? reject(err) : resolve(data));
                 });
             },
+
+            /**
+             * Cierra la sesión del usuario.
+             */
             logout() {
-                state.isLoggedIn = false;
-                state.jwtToken = null;
-                state.user = null;
-                localStorage.removeItem('jwtToken');
-                localStorage.removeItem('userEmail');
-            },
-            handleLoginSuccess(authResult, email) {
-                state.jwtToken = authResult.IdToken;
-                state.isLoggedIn = true;
-                state.user = { email };
-                localStorage.setItem('jwtToken', state.jwtToken);
-                localStorage.setItem('userEmail', email);
+                AppState.clearLoginState();
             }
         };
 
-        // --- 6. MANEJADORES DE EVENTOS --- //
-        const events = {
+        /**
+         * @namespace EventHandlers
+         * @description Contiene todos los manejadores de eventos de la aplicación.
+         */
+        const EventHandlers = {
+            /**
+             * Inicializa todos los event listeners.
+             */
             init() {
-                dom.authNav.addEventListener('click', this.handleAuthNavClick);
-                dom.authModal.form.addEventListener('submit', this.handleAuthFormSubmit);
-                dom.productModal.form.addEventListener('submit', this.handleProductFormSubmit);
-                dom.productGrid.addEventListener('click', this.handleProductGridClick);
-                dom.authModal.overlay.addEventListener('click', e => e.target === dom.authModal.overlay && ui.toggleModal(dom.authModal, false));
-                dom.productModal.overlay.addEventListener('click', e => e.target === dom.productModal.overlay && ui.toggleModal(dom.productModal, false));
+                // Eventos de navegación y autenticación
+                DOMCache.authNav.addEventListener('click', this.handleAuthNavClick);
+                DOMCache.authModal.form.addEventListener('submit', this.handleAuthFormSubmit);
+                DOMCache.authModal.overlay.addEventListener('click', this.handleModalOverlayClick);
+
+                // Eventos de productos y administración
+                DOMCache.productModal.form.addEventListener('submit', this.handleProductFormSubmit);
+                DOMCache.productGrid.addEventListener('click', this.handleProductGridClick);
+                DOMCache.productModal.overlay.addEventListener('click', this.handleModalOverlayClick);
+                DOMCache.adminControls.querySelector('[data-action="show-add-product"]').addEventListener('click', this.handleShowAddProductClick);
             },
-            async handleAuthNavClick(e) {
+
+            /**
+             * Maneja clics en la barra de navegación de autenticación.
+             * @param {Event} e - Objeto de evento.
+             */
+            handleAuthNavClick(e) {
                 const action = e.target.dataset.action;
+                if (!action) return;
+
                 if (action === 'show-login') {
-                    ui.toggleModal(dom.authModal, true);
-                    dom.authModal.title.textContent = 'Iniciar Sesión';
-                    dom.authModal.submitButton.textContent = 'Acceder';
-                    dom.authModal.confirmPassGroup.classList.add('hidden');
-                    dom.authModal.form.dataset.mode = 'login';
+                    UIManager.toggleModal(DOMCache.authModal, true);
+                    DOMCache.authModal.title.textContent = 'Iniciar Sesión';
+                    DOMCache.authModal.submitButton.textContent = 'Acceder';
+                    DOMCache.authModal.confirmPassGroup.classList.add('hidden');
+                    DOMCache.authModal.form.dataset.mode = 'login';
                 } else if (action === 'show-register') {
-                    ui.toggleModal(dom.authModal, true);
-                    dom.authModal.title.textContent = 'Registrarse';
-                    dom.authModal.submitButton.textContent = 'Crear Cuenta';
-                    dom.authModal.confirmPassGroup.classList.remove('hidden');
-                    dom.authModal.form.dataset.mode = 'register';
+                    UIManager.toggleModal(DOMCache.authModal, true);
+                    DOMCache.authModal.title.textContent = 'Registrarse';
+                    DOMCache.authModal.submitButton.textContent = 'Crear Cuenta';
+                    DOMCache.authModal.confirmPassGroup.classList.remove('hidden');
+                    DOMCache.authModal.form.dataset.mode = 'register';
                 } else if (action === 'logout') {
-                    auth.logout();
-                    ui.updateAuthView();
-                    ui.renderProducts();
-                    ui.showToast('Has cerrado sesión.');
-                } else if (action === 'close-auth-modal') {
-                    ui.toggleModal(dom.authModal, false);
+                    AuthManager.logout();
+                    UIManager.updateAuthView();
+                    UIManager.renderProducts(); // Re-renderizar para ocultar botones de admin
+                    UIManager.showToast('Has cerrado sesión.');
                 }
             },
+
+            /**
+             * Maneja el envío del formulario de autenticación (login/registro).
+             * @param {Event} e - Objeto de evento.
+             */
             async handleAuthFormSubmit(e) {
                 e.preventDefault();
                 const form = e.target;
                 const mode = form.dataset.mode;
-                const email = form.email.value;
-                const password = form.password.value;
-                dom.authModal.error.classList.add('hidden');
+                const email = DOMCache.authModal.emailInput.value;
+                const password = DOMCache.authModal.passwordInput.value;
+                DOMCache.authModal.errorDisplay.classList.add('hidden');
 
                 try {
                     if (mode === 'register') {
-                        const confirmPassword = form['confirm-password'].value;
+                        const confirmPassword = DOMCache.authModal.confirmPasswordInput.value;
                         if (password !== confirmPassword) throw new Error('Las contraseñas no coinciden.');
-                        await auth.signUp(email, password);
-                        ui.showToast('¡Registro exitoso! Revisa tu correo para verificar la cuenta.');
-                        ui.toggleModal(dom.authModal, false);
-                    } else {
-                        const result = await auth.signIn(email, password);
-                        auth.handleLoginSuccess(result.AuthenticationResult, email);
-                        ui.updateAuthView();
-                        ui.renderProducts();
-                        ui.showToast('¡Inicio de sesión exitoso!');
-                        ui.toggleModal(dom.authModal, false);
+                        await AuthManager.signUp(email, password);
+                        UIManager.showToast('¡Registro exitoso! Revisa tu correo para verificar la cuenta.');
+                        UIManager.toggleModal(DOMCache.authModal, false);
+                    } else { // login
+                        const result = await AuthManager.signIn(email, password);
+                        AppState.saveLoginState(result.AuthenticationResult, email);
+                        UIManager.updateAuthView();
+                        await App.loadProducts(); // Cargar productos después de iniciar sesión
+                        UIManager.showToast('¡Inicio de sesión exitoso!');
+                        UIManager.toggleModal(DOMCache.authModal, false);
                     }
                 } catch (err) {
-                    dom.authModal.error.textContent = err.message;
-                    dom.authModal.error.classList.remove('hidden');
+                    DOMCache.authModal.errorDisplay.textContent = err.message;
+                    DOMCache.authModal.errorDisplay.classList.remove('hidden');
                 }
             },
+
+            /**
+             * Maneja el envío del formulario de producto (crear/editar).
+             * @param {Event} e - Objeto de evento.
+             */
             async handleProductFormSubmit(e) {
                 e.preventDefault();
                 const form = e.target;
                 const mode = form.dataset.mode;
                 const productData = {
-                    name: dom.productModal.form.name.value,
-                    description: dom.productModal.form.description.value,
-                    category: dom.productModal.form.category.value,
-                    price: parseFloat(dom.productModal.form.price.value),
+                    name: DOMCache.productModal.nameInput.value,
+                    description: DOMCache.productModal.descriptionInput.value,
+                    category: DOMCache.productModal.categoryInput.value,
+                    price: parseFloat(DOMCache.productModal.priceInput.value),
                 };
+
                 try {
                     if (mode === 'edit') {
-                        await api.updateProduct(dom.productModal.idInput.value, productData);
-                        ui.showToast('Producto actualizado con éxito.');
+                        await APIClient.updateProduct(DOMCache.productModal.idInput.value, productData);
+                        UIManager.showToast('Producto actualizado con éxito.');
                     } else {
-                        await api.createProduct(productData);
-                        ui.showToast('Producto creado con éxito.');
+                        await APIClient.createProduct(productData);
+                        UIManager.showToast('Producto creado con éxito.');
                     }
-                    ui.toggleModal(dom.productModal, false);
-                    await main.loadProducts();
+                    UIManager.toggleModal(DOMCache.productModal, false);
+                    await App.loadProducts(); // Recargar la lista
                 } catch (err) {
-                    dom.productModal.error.textContent = err.message;
-                    dom.productModal.error.classList.remove('hidden');
+                    DOMCache.productModal.errorDisplay.textContent = err.message;
+                    DOMCache.productModal.errorDisplay.classList.remove('hidden');
                 }
             },
-            handleProductGridClick(e) {
+
+            /**
+             * Maneja clics en la cuadrícula de productos (botones de editar/borrar/comprar).
+             * @param {Event} e - Objeto de evento.
+             */
+            async handleProductGridClick(e) {
                 const action = e.target.dataset.action;
                 const id = e.target.dataset.id;
-                if (!action) return;
+                if (!action || !id) return;
 
                 if (action === 'show-edit-product') {
-                    const product = state.products.find(p => p.id === id);
+                    const product = AppState.products.find(p => p.id === id);
                     if (product) {
-                        const modal = dom.productModal;
-                        ui.toggleModal(modal, true);
-                        modal.title.textContent = 'Editar Producto';
-                        modal.form.dataset.mode = 'edit';
-                        modal.idInput.value = product.id;
-                        modal.form.name.value = product.name;
-                        modal.form.description.value = product.description;
-                        modal.form.category.value = product.category;
-                        modal.form.price.value = product.price;
+                        UIManager.toggleModal(DOMCache.productModal, true);
+                        DOMCache.productModal.title.textContent = 'Editar Producto';
+                        DOMCache.productModal.form.dataset.mode = 'edit';
+                        DOMCache.productModal.idInput.value = product.id;
+                        DOMCache.productModal.nameInput.value = product.name;
+                        DOMCache.productModal.descriptionInput.value = product.description;
+                        DOMCache.productModal.categoryInput.value = product.category;
+                        DOMCache.productModal.priceInput.value = product.price;
                     }
                 } else if (action === 'delete-product') {
                     if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-                        api.deleteProduct(id)
-                            .then(() => {
-                                ui.showToast('Producto eliminado con éxito.');
-                                main.loadProducts();
-                            })
-                            .catch(err => {
-                                ui.showToast(`Error al eliminar: $${err.message}`, 'error');
-                            });
+                        try {
+                            await APIClient.deleteProduct(id);
+                            UIManager.showToast('Producto eliminado con éxito.');
+                            await App.loadProducts();
+                        } catch (err) {
+                            UIManager.showToast(`Error al eliminar: ${err.message}`, 'error');
+                        }
                     }
                 } else if (action === 'purchase-product') {
-                    ui.showToast('Para comprar, por favor, inicie sesión.', 'error');
+                    UIManager.showToast('Para comprar, por favor, inicie sesión.', 'error');
                 }
+            },
+
+            /**
+             * Maneja clics en el overlay de los modales para cerrarlos.
+             * @param {Event} e - Objeto de evento.
+             */
+            handleModalOverlayClick(e) {
+                const action = e.target.dataset.action;
+                if (e.target === DOMCache.authModal.overlay && action === 'close-auth-modal') {
+                    UIManager.toggleModal(DOMCache.authModal, false);
+                } else if (e.target === DOMCache.productModal.overlay && action === 'close-product-modal') {
+                    UIManager.toggleModal(DOMCache.productModal, false);
+                } else if (e.target.dataset.action === 'close-auth-modal') { // Botón Cancelar dentro del modal de auth
+                    UIManager.toggleModal(DOMCache.authModal, false);
+                } else if (e.target.dataset.action === 'close-product-modal') { // Botón Cancelar dentro del modal de producto
+                    UIManager.toggleModal(DOMCache.productModal, false);
+                }
+            },
+
+            /**
+             * Maneja el clic en el botón de añadir producto.
+             */
+            handleShowAddProductClick() {
+                UIManager.toggleModal(DOMCache.productModal, true);
+                DOMCache.productModal.title.textContent = 'Añadir Nuevo Producto';
+                DOMCache.productModal.form.dataset.mode = 'create';
+                DOMCache.productModal.idInput.value = '';
             }
         };
 
-        // --- 7. FUNCIÓN PRINCIPAL DE INICIALIZACIÓN --- //
-        const main = {
+        /**
+         * @namespace App
+         * @description Módulo principal de la aplicación.
+         */
+        const App = {
+            /**
+             * Inicializa la aplicación.
+             */
             async init() {
-                auth.init();
-                this.loadInitialState();
-                ui.updateAuthView();
-                await this.loadProducts();
-                events.init();
-            },
-            loadInitialState() {
-                const token = localStorage.getItem('jwtToken');
-                if (token) {
-                    state.jwtToken = token;
-                    state.isLoggedIn = true;
-                    state.user = { email: localStorage.getItem('userEmail') };
+                AuthManager.init();
+                AppState.loadInitialState();
+                EventHandlers.init(); // Inicializar eventos primero
+
+                console.log('App.init() - AppState.isLoggedIn:', AppState.isLoggedIn);
+
+                if (!AppState.isLoggedIn) {
+                    console.log('App.init() - User not logged in, showing auth modal.');
+                    UIManager.toggleModal(DOMCache.authModal, true);
+                    DOMCache.authModal.form.dataset.mode = 'login'; // Por defecto, mostrar login
+                    DOMCache.authModal.title.textContent = 'Iniciar Sesión';
+                    DOMCache.authModal.submitButton.textContent = 'Acceder';
+                    DOMCache.authModal.confirmPassGroup.classList.add('hidden');
+                } else {
+                    console.log('App.init() - User logged in, updating UI and loading products.');
+                    UIManager.updateAuthView();
+                    await this.loadProducts();
                 }
             },
+
+            /**
+             * Carga los productos desde la API y actualiza la UI.
+             */
             async loadProducts() {
                 try {
-                    dom.productGrid.innerHTML = '<p class="loader">Cargando productos...</p>';
-                    state.products = await api.getProducts();
-                    ui.renderProducts();
+                    DOMCache.productGrid.innerHTML = '<p class="loader">Cargando productos...</p>';
+                    AppState.products = await APIClient.getProducts();
+                    UIManager.renderProducts();
                 } catch (err) {
-                    dom.productGrid.innerHTML = '<p>Error al cargar los productos.</p>';
+                    DOMCache.productGrid.innerHTML = '<p>Error al cargar los productos.</p>';
+                    UIManager.showToast(`Error al cargar productos: ${err.message}`, 'error');
                     console.error(err);
                 }
             }
         };
 
         // --- ARRANQUE DE LA APLICACIÓN ---
-        document.addEventListener('DOMContentLoaded', () => main.init());
+        document.addEventListener('DOMContentLoaded', () => App.init());
 
     })(window, document);
     </script>
