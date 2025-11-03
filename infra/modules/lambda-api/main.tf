@@ -10,6 +10,11 @@ variable "api_name" {
   default     = "serverless-api"
 }
 
+variable "cloudfront_url" {
+  description = "URL de la distribución de CloudFront para permitir en CORS"
+  type        = string
+}
+
 # --- ROL Y POLÍTICAS DE IAM ---
 resource "aws_iam_role" "lambda_exec" {
   name = "${var.lambda_function_name}-role"
@@ -119,10 +124,16 @@ resource "aws_apigatewayv2_api" "http_api" {
   name          = var.api_name
   protocol_type = "HTTP"
   cors_configuration {
-    allow_origins = ["*"]
+    allow_origins = ["https://${var.cloudfront_url}"]
     allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers = ["Content-Type", "Authorization"]
   }
+}
+
+resource "aws_apigatewayv2_stage" "default_stage" {
+  api_id      = aws_apigatewayv2_api.http_api.id
+  name        = "$default"
+  auto_deploy = true
 }
 
 resource "aws_apigatewayv2_integration" "lambda_integration" {
@@ -136,7 +147,7 @@ resource "aws_apigatewayv2_integration" "lambda_integration" {
 
 # Rutas públicas (no requieren autenticación)
 resource "aws_apigatewayv2_route" "public_routes" {
-  for_each = toset(["GET /products", "GET /products/{id}", "POST /products/{id}/purchase"])
+  for_each = toset(["GET /products", "GET /products/{id}", "POST /products/{id}/purchase", "OPTIONS /products"])
 
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = each.value
@@ -149,7 +160,7 @@ resource "aws_lambda_permission" "api_gw" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*"
 }
 
 # --- SALIDAS ---

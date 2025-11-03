@@ -46,6 +46,10 @@ exports.handler = async (event) => {
 
     try {
         // --- Rutas Públicas ---
+        if (httpMethod === "OPTIONS") {
+            // Handle CORS preflight requests
+            return createResponse(200, null);
+        }
         if (httpMethod === "GET" && path === "/products") {
             const { Items } = await client.send(new ScanCommand({ TableName: DYNAMODB_TABLE_NAME }));
             return createResponse(200, Items.map(item => unmarshall(item)));

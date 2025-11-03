@@ -41,6 +41,7 @@ module "lambda_api" {
   pre_signup_lambda_source_path = "${path.module}/../src/backend"
   dynamodb_table_name   = module.dynamodb.table_name
   dynamodb_table_arn    = module.dynamodb.table_arn
+  cloudfront_url        = module.cloudfront.cdn_url
 }
 
 module "api-gateway-auth" {
