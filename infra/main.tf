@@ -41,10 +41,15 @@ module "lambda_api" {
   pre_signup_lambda_source_path = "${path.module}/../src/backend"
   dynamodb_table_name   = module.dynamodb.table_name
   dynamodb_table_arn    = module.dynamodb.table_arn
-  cognito_user_pool_arn = module.cognito.user_pool_arn
+}
+
+module "api-gateway-auth" {
+  source                = "./modules/api-gateway-auth"
+  api_id                = module.lambda_api.api_id
+  lambda_integration_id = module.lambda_api.lambda_integration_id
   cognito_app_client_id = module.cognito.app_client_id
-  aws_region            = var.aws_region
   cognito_user_pool_id  = module.cognito.user_pool_id
+  aws_region            = var.aws_region
 }
 
 # --- Módulos de Red y DNS ---

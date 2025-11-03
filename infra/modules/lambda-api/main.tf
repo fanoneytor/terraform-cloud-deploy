@@ -125,18 +125,6 @@ resource "aws_apigatewayv2_api" "http_api" {
   }
 }
 
-resource "aws_apigatewayv2_authorizer" "cognito_auth" {
-  api_id           = aws_apigatewayv2_api.http_api.id
-  authorizer_type  = "JWT"
-  identity_sources = ["$request.header.Authorization"]
-  name             = "cognito-authorizer"
-
-  jwt_configuration {
-    audience = [var.cognito_app_client_id]
-    issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/${var.cognito_user_pool_id}"
-  }
-}
-
 resource "aws_apigatewayv2_integration" "lambda_integration" {
   api_id             = aws_apigatewayv2_api.http_api.id
   integration_type   = "AWS_PROXY"
@@ -155,17 +143,6 @@ resource "aws_apigatewayv2_route" "public_routes" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
-# Rutas protegidas (requieren token JWT de Cognito)
-resource "aws_apigatewayv2_route" "protected_routes" {
-  for_each = toset(["POST /products", "PUT /products/{id}", "DELETE /products/{id}"])
-
-  api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = each.value
-  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
-  authorizer_id = aws_apigatewayv2_authorizer.cognito_auth.id
-  authorization_type = "JWT"
-}
-
 # Permiso para que API Gateway invoque la Lambda
 resource "aws_lambda_permission" "api_gw" {
   statement_id  = "AllowAPIGatewayInvoke"
@@ -180,3 +157,14 @@ output "api_url" {
   description = "Endpoint público de la API Gateway"
   value       = aws_apigatewayv2_api.http_api.api_endpoint
 }
+
+output "lambda_integration_id" {
+  description = "The ID of the Lambda integration"
+  value       = aws_apigatewayv2_integration.lambda_integration.id
+}
+
+output "api_id" {
+    description = "The ID of the API Gateway"
+    value = aws_apigatewayv2_api.http_api.id
+}
+

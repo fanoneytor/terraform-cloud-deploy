@@ -13,29 +13,8 @@ variable "dynamodb_table_arn" {
   description = "ARN de la tabla DynamoDB"
 }
 
-variable "cognito_user_pool_arn" {
-  type        = string
-  description = "ARN del User Pool de Cognito para el autorizador de la API"
-}
-
-variable "cognito_app_client_id" {
-  type        = string
-  description = "ID del App Client de Cognito para la audiencia del autorizador"
-}
-
-variable "aws_region" {
-  type        = string
-  description = "Región de AWS donde se despliega la API"
-}
-
-variable "cognito_user_pool_id" {
-  type        = string
-  description = "ID del User Pool de Cognito para el autorizador de la API"
-}
-
 variable "pre_signup_lambda_source_path" {
   type        = string
   description = "Ruta a la carpeta con el código fuente de la función Lambda de pre-registro de Cognito"
   default     = ""
 }
-
