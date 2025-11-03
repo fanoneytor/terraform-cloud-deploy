@@ -3,6 +3,16 @@ variable "origin_bucket" {
   description = "Dominio del bucket S3 que actúa como origen"
 }
 
+variable "origin_bucket_id" {
+  type        = string
+  description = "ID del bucket S3 de origen"
+}
+
+variable "origin_bucket_arn" {
+  type        = string
+  description = "ARN del bucket S3 de origen"
+}
+
 variable "distribution_name" {
   type        = string
   description = "Nombre identificador para la distribución CloudFront"

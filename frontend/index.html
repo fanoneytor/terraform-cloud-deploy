@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mi Sitio Estático</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; background-color: #f0f2f5; }
+        h1 { color: #333; }
+        p { color: #666; }
+        pre { background-color: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        button { padding: 10px 15px; font-size: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>¡Hola, Mundo desde S3 y CloudFront!</h1>
+    <p>Esta es una página de prueba desplegada automáticamente con Terraform.</p>
+    <button onclick="llamarAPI()">Llamar a la API</button>
+    <h2>Respuesta de la API:</h2>
+    <pre id="api-response">Aquí aparecerá la respuesta...</pre>
+
+    <script>
+        async function llamarAPI() {
+            const apiResponseElement = document.getElementById('api-response');
+            apiResponseElement.textContent = 'Llamando...';
+            try {
+                // La URL de la API se inyectará aquí durante el despliegue o se configurará manualmente
+                const apiUrl = '${api_url}';
+                const response = await fetch(apiUrl + '/test');
+                const data = await response.json();
+                apiResponseElement.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                console.error('Error al llamar a la API:', error);
+                apiResponseElement.textContent = 'Error al llamar a la API: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

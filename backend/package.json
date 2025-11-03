@@ -1,0 +1,14 @@
+{
+  "name": "backend-api",
+  "version": "1.0.0",
+  "description": "Función Lambda para la API serverless",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.585.0"
+  }
+}

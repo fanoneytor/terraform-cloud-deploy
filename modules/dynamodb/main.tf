@@ -27,12 +27,4 @@ resource "aws_dynamodb_table" "table" {
   }
 }
 
-output "table_arn" {
-  description = "ARN completo de la tabla DynamoDB"
-  value       = aws_dynamodb_table.table.arn
-}
 
-output "table_name" {
-  description = "Nombre de la tabla DynamoDB"
-  value       = aws_dynamodb_table.table.name
-}
