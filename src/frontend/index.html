@@ -5,36 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tienda de Licencias - NetSolutions</title>
     <link rel="stylesheet" href="style.css">
-    <!-- SDK de Amazon Cognito -->
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1093.0.min.js"></script>
 </head>
 <body>
 
+    <div id="toast-container" class="toast-container"></div>
+
     <div class="container">
         <header>
             <h1>NetSolutions</h1>
-            <div id="auth-section" class="auth-section">
+            <nav id="auth-nav" aria-label="Autenticación de usuario">
                 <div id="logged-out-view">
-                    <button onclick="showAuthModal('login')">Iniciar Sesión</button>
-                    <button onclick="showAuthModal('register')" class="primary">Registrarse</button>
+                    <button data-action="show-login">Iniciar Sesión</button>
+                    <button data-action="show-register" class="primary">Registrarse</button>
                 </div>
                 <div id="logged-in-view" class="hidden">
                     <span id="user-email"></span>
-                    <button onclick="logout()">Cerrar Sesión</button>
+                    <button data-action="logout">Cerrar Sesión</button>
                 </div>
-            </div>
+            </nav>
         </header>
 
         <main>
-            <div id="admin-controls" class="admin-controls hidden">
+            <section id="admin-controls" class="admin-controls hidden" aria-label="Controles de administrador">
                 <h2>Panel de Administrador</h2>
-                <button onclick="showProductModal()" class="primary">+ Añadir Nuevo Producto</button>
-            </div>
+                <button data-action="show-add-product" class="primary">+ Añadir Nuevo Producto</button>
+            </section>
 
-            <h2>Venta de Licencias de Software</h2>
-            <div id="product-grid" class="product-grid">
-                <p class="loader">Cargando productos...</p>
-            </div>
+            <section aria-labelledby="products-heading">
+                <h2 id="products-heading">Venta de Licencias de Software</h2>
+                <div id="product-grid" class="product-grid">
+                    <p class="loader">Cargando productos...</p>
+                </div>
+            </section>
         </main>
 
         <footer>
@@ -43,25 +46,25 @@
     </div>
 
     <!-- Modal de Autenticación -->
-    <div id="auth-modal" class="modal-overlay hidden">
+    <div id="auth-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
         <div class="modal-content">
             <h2 id="auth-modal-title">Iniciar Sesión</h2>
-            <form id="auth-form">
+            <form id="auth-form" novalidate>
                 <div class="form-group">
                     <label for="email">Correo Electrónico</label>
-                    <input type="email" id="email" required>
+                    <input type="email" id="email" required autocomplete="email">
                 </div>
                 <div class="form-group">
                     <label for="password">Contraseña</label>
-                    <input type="password" id="password" required>
+                    <input type="password" id="password" required autocomplete="current-password">
                 </div>
                 <div id="confirm-password-group" class="form-group hidden">
                     <label for="confirm-password">Confirmar Contraseña</label>
-                    <input type="password" id="confirm-password">
+                    <input type="password" id="confirm-password" autocomplete="new-password">
                 </div>
-                <p id="auth-error" class="error-message hidden"></p>
+                <p id="auth-error" class="error-message hidden" aria-live="assertive"></p>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" onclick="closeAuthModal()">Cancelar</button>
+                    <button type="button" class="btn-secondary" data-action="close-auth-modal">Cancelar</button>
                     <button type="submit" class="primary" id="auth-submit-button">Acceder</button>
                 </div>
             </form>
@@ -69,10 +72,10 @@
     </div>
 
     <!-- Modal de Producto (Crear/Editar) -->
-    <div id="product-modal" class="modal-overlay hidden">
+    <div id="product-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
         <div class="modal-content">
             <h2 id="product-modal-title">Añadir Nuevo Producto</h2>
-            <form id="product-form">
+            <form id="product-form" novalidate>
                 <input type="hidden" id="product-id">
                 <div class="form-group">
                     <label for="product-name">Nombre</label>
@@ -90,9 +93,9 @@
                     <label for="product-price">Precio (USD)</label>
                     <input type="number" id="product-price" step="0.01" required>
                 </div>
-                <p id="product-error" class="error-message hidden"></p>
+                <p id="product-error" class="error-message hidden" aria-live="assertive"></p>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" onclick="closeProductModal()">Cancelar</button>
+                    <button type="button" class="btn-secondary" data-action="close-product-modal">Cancelar</button>
                     <button type="submit" class="primary">Guardar</button>
                 </div>
             </form>
@@ -100,241 +103,318 @@
     </div>
 
     <script>
-        // --- Configuración (inyectada por Terraform) ---
-        const COGNITO_USER_POOL_ID = '${cognito_user_pool_id}';
-        const COGNITO_CLIENT_ID = '${cognito_app_client_id}';
-        const API_URL = '${api_url}';
-        const AWS_REGION = 'us-east-1'; // La región donde está el User Pool
+    // Usamos un IIFE (Immediately Invoked Function Expression) para encapsular nuestro código
+    // y no contaminar el scope global.
+    ((window, document) => {
+        'use strict';
 
-        // --- Estado de la Aplicación ---
-        let state = {
-            isLoggedIn: false,
-            jwtToken: null,
-            products: []
+        // --- 1. CONFIGURACIÓN Y ESTADO --- //
+        const config = {
+            cognitoUserPoolId: '${cognito_user_pool_id}',
+            cognitoClientId: '${cognito_app_client_id}',
+            apiUrl: '${api_url}',
+            awsRegion: 'us-east-1'
         };
 
-        // --- Inicialización ---
-        document.addEventListener('DOMContentLoaded', () => {
-            AWS.config.update({ region: AWS_REGION });
-            
-            const token = localStorage.getItem('jwtToken');
-            if (token) {
-                state.jwtToken = token;
-                state.isLoggedIn = true;
-                // Aquí podrías decodificar el token para obtener el email, pero lo simplificaremos
-                const email = localStorage.getItem('userEmail');
-                if(email) document.getElementById('user-email').textContent = email;
-            }
+        const state = {
+            isLoggedIn: false,
+            jwtToken: null,
+            products: [],
+            user: null
+        };
 
-            updateUI();
-            fetchProducts();
+        // --- 2. CACHÉ DE ELEMENTOS DEL DOM --- //
+        const dom = {
+            authNav: document.getElementById('auth-nav'),
+            loggedOutView: document.getElementById('logged-out-view'),
+            loggedInView: document.getElementById('logged-in-view'),
+            userEmailSpan: document.getElementById('user-email'),
+            adminControls: document.getElementById('admin-controls'),
+            productGrid: document.getElementById('product-grid'),
+            authModal: { 
+                overlay: document.getElementById('auth-modal'),
+                title: document.getElementById('auth-modal-title'),
+                form: document.getElementById('auth-form'),
+                confirmPassGroup: document.getElementById('confirm-password-group'),
+                submitButton: document.getElementById('auth-submit-button'),
+                error: document.getElementById('auth-error')
+            },
+            productModal: {
+                overlay: document.getElementById('product-modal'),
+                title: document.getElementById('product-modal-title'),
+                form: document.getElementById('product-form'),
+                error: document.getElementById('product-error'),
+                idInput: document.getElementById('product-id')
+            },
+            toastContainer: document.getElementById('toast-container')
+        };
 
-            document.getElementById('auth-form').addEventListener('submit', handleAuthFormSubmit);
-            document.getElementById('product-form').addEventListener('submit', handleProductFormSubmit);
-        });
-
-        // --- Lógica de UI ---
-        function updateUI() {
-            document.getElementById('logged-in-view').classList.toggle('hidden', !state.isLoggedIn);
-            document.getElementById('logged-out-view').classList.toggle('hidden', state.isLoggedIn);
-            document.getElementById('admin-controls').classList.toggle('hidden', !state.isLoggedIn);
-            renderProducts(); // Re-renderizar productos para mostrar/ocultar botones de admin
-        }
-
-        function showAuthModal(mode) { // 'login' or 'register'
-            document.getElementById('auth-modal').classList.remove('hidden');
-            document.getElementById('auth-modal-title').textContent = mode === 'login' ? 'Iniciar Sesión' : 'Registrarse';
-            document.getElementById('auth-submit-button').textContent = mode === 'login' ? 'Acceder' : 'Crear Cuenta';
-            document.getElementById('confirm-password-group').classList.toggle('hidden', mode === 'login');
-            document.getElementById('auth-form').dataset.mode = mode;
-            document.getElementById('auth-error').classList.add('hidden');
-        }
-
-        function closeAuthModal() {
-            document.getElementById('auth-modal').classList.add('hidden');
-        }
-
-        function showProductModal(product = null) {
-            document.getElementById('product-modal').classList.remove('hidden');
-            const form = document.getElementById('product-form');
-            if (product) {
-                document.getElementById('product-modal-title').textContent = 'Editar Producto';
-                form.dataset.mode = 'edit';
-                document.getElementById('product-id').value = product.id;
-                document.getElementById('product-name').value = product.name;
-                document.getElementById('product-description').value = product.description;
-                document.getElementById('product-category').value = product.category;
-                document.getElementById('product-price').value = product.price;
-            } else {
-                document.getElementById('product-modal-title').textContent = 'Añadir Nuevo Producto';
-                form.dataset.mode = 'create';
-                form.reset();
-            }
-            document.getElementById('product-error').classList.add('hidden');
-        }
-
-        function closeProductModal() {
-            document.getElementById('product-modal').classList.add('hidden');
-        }
-
-        // --- Lógica de Datos (API) ---
-        async function fetchProducts() {
-            const productGrid = document.getElementById('product-grid');
-            productGrid.innerHTML = '<p class="loader">Cargando productos...</p>';
-            try {
-                const response = await fetch(`${API_URL}/products`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                state.products = await response.json();
-                renderProducts();
-            } catch (error) {
-                console.error('Error al cargar productos:', error);
-                productGrid.innerHTML = '<p>Error al cargar los productos.</p>';
-            }
-        }
-
-        function renderProducts() {
-            const productGrid = document.getElementById('product-grid');
-            if (state.products.length === 0) {
-                productGrid.innerHTML = '<p>No hay productos disponibles.</p>';
-                return;
-            }
-            productGrid.innerHTML = state.products.map(product => `
-                <div class="product-card">
-                    <div class="product-card-content">
-                        <h3>${product.name}</h3>
-                        <p>${product.description}</p>
-                        <p class="product-price">$${product.price} USD</p>
-                        ${state.isLoggedIn ? `
-                        <div class="product-card-actions">
-                            <button class="btn-secondary" onclick="showProductModal(state.products.find(p => p.id === '${product.id}'))">Editar</button>
-                            <button class="btn-danger" onclick="deleteProduct('${product.id}')">Borrar</button>
-                        </div>
-                        ` : '
-                        <button class="buy-button" onclick="purchaseProduct('${product.id}')">Comprar Ahora</button>'
-                        }
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function handleProductFormSubmit(event) {
-            event.preventDefault();
-            const form = event.target;
-            const mode = form.dataset.mode;
-            const productData = {
-                name: document.getElementById('product-name').value,
-                description: document.getElementById('product-description').value,
-                category: document.getElementById('product-category').value,
-                price: parseFloat(document.getElementById('product-price').value),
-            };
-            const productId = document.getElementById('product-id').value;
-            const url = mode === 'edit' ? `${API_URL}/products/${productId}` : `${API_URL}/products`;
-            const method = mode === 'edit' ? 'PUT' : 'POST';
-
-            try {
-                const response = await apiRequest(url, method, productData);
-                closeProductModal();
-                fetchProducts(); // Recargar la lista
-            } catch (error) {
-                document.getElementById('product-error').textContent = error.message;
-                document.getElementById('product-error').classList.remove('hidden');
-            }
-        }
-
-        async function deleteProduct(productId) {
-            if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
-            try {
-                await apiRequest(`${API_URL}/products/${productId}`, 'DELETE');
-                fetchProducts(); // Recargar la lista
-            } catch (error) {
-                alert(`Error al eliminar el producto: ${error.message}`);
-            }
-        }
-
-        function purchaseProduct(productId) {
-            alert('Para comprar, por favor, inicie sesión.');
-        }
-
-        // --- Lógica de Autenticación (Cognito) ---
-        async function handleAuthFormSubmit(event) {
-            event.preventDefault();
-            const mode = event.target.dataset.mode;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const errorEl = document.getElementById('auth-error');
-            errorEl.classList.add('hidden');
-
-            const cognito = new AWS.CognitoIdentityServiceProvider();
-
-            if (mode === 'register') {
-                const confirmPassword = document.getElementById('confirm-password').value;
-                if (password !== confirmPassword) {
-                    errorEl.textContent = 'Las contraseñas no coinciden.';
-                    errorEl.classList.remove('hidden');
+        // --- 3. LÓGICA DE UI (INTERFAZ DE USUARIO) --- //
+        const ui = {
+            updateAuthView() {
+                dom.loggedInView.classList.toggle('hidden', !state.isLoggedIn);
+                dom.loggedOutView.classList.toggle('hidden', state.isLoggedIn);
+                dom.adminControls.classList.toggle('hidden', !state.isLoggedIn);
+                if (state.isLoggedIn && state.user) {
+                    dom.userEmailSpan.textContent = state.user.email;
+                }
+            },
+            renderProducts() {
+                if (state.products.length === 0) {
+                    dom.productGrid.innerHTML = '<p>No hay productos disponibles.</p>';
                     return;
                 }
-                cognito.signUp({
-                    ClientId: COGNITO_CLIENT_ID,
-                    Username: email,
-                    Password: password,
-                    UserAttributes: [{ Name: 'email', Value: email }]
-                }, (err, data) => {
-                    if (err) {
-                        errorEl.textContent = err.message;
-                        errorEl.classList.remove('hidden');
-                    } else {
-                        alert('¡Registro exitoso! Por favor, revisa tu correo para verificar tu cuenta. Luego podrás iniciar sesión.');
-                        closeAuthModal();
-                    }
+                dom.productGrid.innerHTML = state.products.map(product => {
+                    const adminActions = '<div class="product-card-actions"><button class="btn-secondary" data-action="show-edit-product" data-id="' + product.id + '">Editar</button><button class="btn-danger" data-action="delete-product" data-id="' + product.id + '">Borrar</button></div>';
+                    const userActions = '<button class="buy-button" data-action="purchase-product" data-id="' + product.id + '">Comprar Ahora</button>';
+                    return (
+                        '<div class="product-card">' +
+                            '<div class="product-card-content">' +
+                                '<h3>' + product.name + '</h3>' +
+                                '<p>' + product.description + '</p>' +
+                                '<p class="product-price">$' + product.price + ' USD</p>' +
+                                (state.isLoggedIn ? adminActions : userActions) +
+                            '</div>' +
+                        '</div>'
+                    );
+                }).join('');
+            },
+            toggleModal(modal, show) {
+                modal.overlay.classList.toggle('hidden', !show);
+                if(show) modal.form.reset();
+            },
+            showToast(message, type = 'success') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+                dom.toastContainer.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 10); // Animar entrada
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    toast.addEventListener('transitionend', () => toast.remove());
+                }, 5000);
+            }
+        };
+
+        // --- 4. LÓGICA DE API (CLIENTE HTTP) --- //
+        const api = {
+            async request(endpoint, method, body = null) {
+                const headers = { 'Content-Type': 'application/json' };
+                if (state.jwtToken) {
+                    headers['Authorization'] = state.jwtToken;
+                }
+                const options = { method, headers };
+                if (body) options.body = JSON.stringify(body);
+
+                const response = await fetch(config.apiUrl + endpoint, options);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Error ${response.status}`);
+                }
+                return response.status === 204 ? null : response.json();
+            },
+            getProducts() { return this.request('/products', 'GET'); },
+            createProduct(data) { return this.request('/products', 'POST', data); },
+            updateProduct(id, data) { return this.request(`/products/${id}`, 'PUT', data); },
+            deleteProduct(id) { return this.request(`/products/${id}`, 'DELETE'); }
+        };
+
+        // --- 5. LÓGICA DE AUTENTICACIÓN (COGNITO) --- //
+        const auth = {
+            cognitoProvider: null,
+            init() {
+                AWS.config.update({ region: config.awsRegion });
+                this.cognitoProvider = new AWS.CognitoIdentityServiceProvider();
+            },
+            signUp(email, password) {
+                return new Promise((resolve, reject) => {
+                    this.cognitoProvider.signUp({
+                        ClientId: config.cognitoClientId,
+                        Username: email,
+                        Password: password,
+                        UserAttributes: [{ Name: 'email', Value: email }]
+                    }, (err, data) => err ? reject(err) : resolve(data));
                 });
-            } else { // login
-                cognito.initiateAuth({
-                    AuthFlow: 'USER_SRP_AUTH',
-                    ClientId: COGNITO_CLIENT_ID,
-                    AuthParameters: { USERNAME: email, PASSWORD: password }
-                }, (err, data) => {
-                    if (err) {
-                        errorEl.textContent = err.message;
-                        errorEl.classList.remove('hidden');
-                    } else {
-                        state.jwtToken = data.AuthenticationResult.IdToken;
-                        state.isLoggedIn = true;
-                        localStorage.setItem('jwtToken', state.jwtToken);
-                        localStorage.setItem('userEmail', email);
-                        document.getElementById('user-email').textContent = email;
-                        closeAuthModal();
-                        updateUI();
-                    }
+            },
+            signIn(email, password) {
+                return new Promise((resolve, reject) => {
+                    this.cognitoProvider.initiateAuth({
+                        AuthFlow: 'USER_SRP_AUTH',
+                        ClientId: config.cognitoClientId,
+                        AuthParameters: { USERNAME: email, PASSWORD: password }
+                    }, (err, data) => err ? reject(err) : resolve(data));
                 });
+            },
+            logout() {
+                state.isLoggedIn = false;
+                state.jwtToken = null;
+                state.user = null;
+                localStorage.removeItem('jwtToken');
+                localStorage.removeItem('userEmail');
+            },
+            handleLoginSuccess(authResult, email) {
+                state.jwtToken = authResult.IdToken;
+                state.isLoggedIn = true;
+                state.user = { email };
+                localStorage.setItem('jwtToken', state.jwtToken);
+                localStorage.setItem('userEmail', email);
             }
-        }
+        };
 
-        function logout() {
-            state.isLoggedIn = false;
-            state.jwtToken = null;
-            localStorage.removeItem('jwtToken');
-            localStorage.removeItem('userEmail');
-            updateUI();
-        }
+        // --- 6. MANEJADORES DE EVENTOS --- //
+        const events = {
+            init() {
+                dom.authNav.addEventListener('click', this.handleAuthNavClick);
+                dom.authModal.form.addEventListener('submit', this.handleAuthFormSubmit);
+                dom.productModal.form.addEventListener('submit', this.handleProductFormSubmit);
+                dom.productGrid.addEventListener('click', this.handleProductGridClick);
+                dom.authModal.overlay.addEventListener('click', e => e.target === dom.authModal.overlay && ui.toggleModal(dom.authModal, false));
+                dom.productModal.overlay.addEventListener('click', e => e.target === dom.productModal.overlay && ui.toggleModal(dom.productModal, false));
+            },
+            async handleAuthNavClick(e) {
+                const action = e.target.dataset.action;
+                if (action === 'show-login') {
+                    ui.toggleModal(dom.authModal, true);
+                    dom.authModal.title.textContent = 'Iniciar Sesión';
+                    dom.authModal.submitButton.textContent = 'Acceder';
+                    dom.authModal.confirmPassGroup.classList.add('hidden');
+                    dom.authModal.form.dataset.mode = 'login';
+                } else if (action === 'show-register') {
+                    ui.toggleModal(dom.authModal, true);
+                    dom.authModal.title.textContent = 'Registrarse';
+                    dom.authModal.submitButton.textContent = 'Crear Cuenta';
+                    dom.authModal.confirmPassGroup.classList.remove('hidden');
+                    dom.authModal.form.dataset.mode = 'register';
+                } else if (action === 'logout') {
+                    auth.logout();
+                    ui.updateAuthView();
+                    ui.renderProducts();
+                    ui.showToast('Has cerrado sesión.');
+                } else if (action === 'close-auth-modal') {
+                    ui.toggleModal(dom.authModal, false);
+                }
+            },
+            async handleAuthFormSubmit(e) {
+                e.preventDefault();
+                const form = e.target;
+                const mode = form.dataset.mode;
+                const email = form.email.value;
+                const password = form.password.value;
+                dom.authModal.error.classList.add('hidden');
 
-        // --- Helper para API ---
-        async function apiRequest(url, method, body = null) {
-            const headers = { 'Content-Type': 'application/json' };
-            if (state.jwtToken) {
-                headers['Authorization'] = state.jwtToken;
-            }
-            const options = { method, headers };
-            if (body) {
-                options.body = JSON.stringify(body);
-            }
-            const response = await fetch(url, options);
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `Error ${response.status}`);
-            }
-            return response.status === 204 ? null : response.json();
-        }
+                try {
+                    if (mode === 'register') {
+                        const confirmPassword = form['confirm-password'].value;
+                        if (password !== confirmPassword) throw new Error('Las contraseñas no coinciden.');
+                        await auth.signUp(email, password);
+                        ui.showToast('¡Registro exitoso! Revisa tu correo para verificar la cuenta.');
+                        ui.toggleModal(dom.authModal, false);
+                    } else {
+                        const result = await auth.signIn(email, password);
+                        auth.handleLoginSuccess(result.AuthenticationResult, email);
+                        ui.updateAuthView();
+                        ui.renderProducts();
+                        ui.showToast('¡Inicio de sesión exitoso!');
+                        ui.toggleModal(dom.authModal, false);
+                    }
+                } catch (err) {
+                    dom.authModal.error.textContent = err.message;
+                    dom.authModal.error.classList.remove('hidden');
+                }
+            },
+            async handleProductFormSubmit(e) {
+                e.preventDefault();
+                const form = e.target;
+                const mode = form.dataset.mode;
+                const productData = {
+                    name: dom.productModal.form.name.value,
+                    description: dom.productModal.form.description.value,
+                    category: dom.productModal.form.category.value,
+                    price: parseFloat(dom.productModal.form.price.value),
+                };
+                try {
+                    if (mode === 'edit') {
+                        await api.updateProduct(dom.productModal.idInput.value, productData);
+                        ui.showToast('Producto actualizado con éxito.');
+                    } else {
+                        await api.createProduct(productData);
+                        ui.showToast('Producto creado con éxito.');
+                    }
+                    ui.toggleModal(dom.productModal, false);
+                    await main.loadProducts();
+                } catch (err) {
+                    dom.productModal.error.textContent = err.message;
+                    dom.productModal.error.classList.remove('hidden');
+                }
+            },
+            handleProductGridClick(e) {
+                const action = e.target.dataset.action;
+                const id = e.target.dataset.id;
+                if (!action) return;
 
+                if (action === 'show-edit-product') {
+                    const product = state.products.find(p => p.id === id);
+                    if (product) {
+                        const modal = dom.productModal;
+                        ui.toggleModal(modal, true);
+                        modal.title.textContent = 'Editar Producto';
+                        modal.form.dataset.mode = 'edit';
+                        modal.idInput.value = product.id;
+                        modal.form.name.value = product.name;
+                        modal.form.description.value = product.description;
+                        modal.form.category.value = product.category;
+                        modal.form.price.value = product.price;
+                    }
+                } else if (action === 'delete-product') {
+                    if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+                        api.deleteProduct(id)
+                            .then(() => {
+                                ui.showToast('Producto eliminado con éxito.');
+                                main.loadProducts();
+                            })
+                            .catch(err => {
+                                ui.showToast(`Error al eliminar: ${err.message}`, 'error');
+                            });
+                    }
+                } else if (action === 'purchase-product') {
+                    ui.showToast('Para comprar, por favor, inicie sesión.', 'error');
+                }
+            }
+        };
+
+        // --- 7. FUNCIÓN PRINCIPAL DE INICIALIZACIÓN --- //
+        const main = {
+            async init() {
+                auth.init();
+                this.loadInitialState();
+                ui.updateAuthView();
+                await this.loadProducts();
+                events.init();
+            },
+            loadInitialState() {
+                const token = localStorage.getItem('jwtToken');
+                if (token) {
+                    state.jwtToken = token;
+                    state.isLoggedIn = true;
+                    state.user = { email: localStorage.getItem('userEmail') };
+                }
+            },
+            async loadProducts() {
+                try {
+                    dom.productGrid.innerHTML = '<p class="loader">Cargando productos...</p>';
+                    state.products = await api.getProducts();
+                    ui.renderProducts();
+                } catch (err) {
+                    dom.productGrid.innerHTML = '<p>Error al cargar los productos.</p>';
+                    console.error(err);
+                }
+            }
+        };
+
+        // --- ARRANQUE DE LA APLICACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => main.init());
+
+    })(window, document);
     </script>
 
 </body>
