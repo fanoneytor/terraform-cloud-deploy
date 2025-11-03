@@ -1,128 +1,178 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tienda de Licencias - NetSolutions</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1093.0.min.js"></script>
-</head>
-<body>
-
+  </head>
+  <body>
     <div id="toast-container" class="toast-container"></div>
 
     <div class="container">
-        <header>
-            <h1>NetSolutions</h1>
-            <nav id="auth-nav" aria-label="Autenticación de usuario">
-                <div id="logged-out-view">
-                    <button data-action="show-login">Iniciar Sesión</button>
-                    <button data-action="show-register" class="primary">Registrarse</button>
-                </div>
-                <div id="logged-in-view" class="hidden">
-                    <span id="user-email"></span>
-                    <button data-action="logout">Cerrar Sesión</button>
-                </div>
-            </nav>
-        </header>
+      <header>
+        <h1>NetSolutions</h1>
+        <nav id="auth-nav" aria-label="Autenticación de usuario">
+          <div id="logged-out-view">
+            <button data-action="show-login">Iniciar Sesión</button>
+            <button data-action="show-register" class="primary">
+              Registrarse
+            </button>
+          </div>
+          <div id="logged-in-view" class="hidden">
+            <span id="user-email"></span>
+            <button data-action="logout">Cerrar Sesión</button>
+          </div>
+        </nav>
+      </header>
 
-        <main>
-            <section id="admin-controls" class="admin-controls hidden" aria-label="Controles de administrador">
-                <h2>Panel de Administrador</h2>
-                <button data-action="show-add-product" class="primary">+ Añadir Nuevo Producto</button>
-            </section>
+      <main>
+        <section
+          id="admin-controls"
+          class="admin-controls hidden"
+          aria-label="Controles de administrador"
+        >
+          <h2>Panel de Administrador</h2>
+          <button data-action="show-add-product" class="primary">
+            + Añadir Nuevo Producto
+          </button>
+        </section>
 
-            <section aria-labelledby="products-heading">
-                <h2 id="products-heading">Venta de Licencias de Software</h2>
-                <div id="product-grid" class="product-grid hidden">
-                    <p class="loader">Cargando productos...</p>
-                </div>
-            </section>
-        </main>
+        <section aria-labelledby="products-heading">
+          <h2 id="products-heading">Venta de Licencias de Software</h2>
+          <div id="product-grid" class="product-grid hidden">
+            <p class="loader">Cargando productos...</p>
+          </div>
+        </section>
+      </main>
 
-        <footer>
-            <p>&copy; 2025 NetSolutions S.A.S. - Arquitectura en AWS</p>
-        </footer>
+      <footer>
+        <p>&copy; 2025 NetSolutions S.A.S. - Arquitectura en AWS</p>
+      </footer>
     </div>
 
     <!-- Modal de Autenticación -->
-    <div id="auth-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
-        <div class="modal-content">
-            <h2 id="auth-modal-title">Iniciar Sesión</h2>
-            <form id="auth-form" novalidate>
-                <div class="form-group">
-                    <label for="email">Correo Electrónico</label>
-                    <input type="email" id="email" required autocomplete="email">
-                </div>
-                <div class="form-group">
-                    <label for="password">Contraseña</label>
-                    <input type="password" id="password" required autocomplete="current-password">
-                </div>
-                <div id="confirm-password-group" class="form-group hidden">
-                    <label for="confirm-password">Confirmar Contraseña</label>
-                    <input type="password" id="confirm-password" autocomplete="new-password">
-                </div>
-                <p id="auth-error" class="error-message hidden" aria-live="assertive"></p>
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-action="close-auth-modal">Cancelar</button>
-                    <button type="submit" class="primary" id="auth-submit-button">Acceder</button>
-                </div>
-            </form>
-        </div>
+    <div
+      id="auth-modal"
+      class="modal-overlay hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
+    >
+      <div class="modal-content">
+        <h2 id="auth-modal-title">Iniciar Sesión</h2>
+        <form id="auth-form" novalidate>
+          <div class="form-group">
+            <label for="email">Correo Electrónico</label>
+            <input type="email" id="email" required autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="password">Contraseña</label>
+            <input
+              type="password"
+              id="password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <div id="confirm-password-group" class="form-group hidden">
+            <label for="confirm-password">Confirmar Contraseña</label>
+            <input
+              type="password"
+              id="confirm-password"
+              autocomplete="new-password"
+            />
+          </div>
+          <p
+            id="auth-error"
+            class="error-message hidden"
+            aria-live="assertive"
+          ></p>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn-secondary"
+              data-action="close-auth-modal"
+            >
+              Cancelar
+            </button>
+            <button type="submit" class="primary" id="auth-submit-button">
+              Acceder
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- Modal de Producto (Crear/Editar) -->
-    <div id="product-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
-        <div class="modal-content">
-            <h2 id="product-modal-title">Añadir Nuevo Producto</h2>
-            <form id="product-form" novalidate>
-                <input type="hidden" id="product-id">
-                <div class="form-group">
-                    <label for="product-name">Nombre</label>
-                    <input type="text" id="product-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="product-description">Descripción</label>
-                    <textarea id="product-description" rows="3" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="product-category">Categoría</label>
-                    <input type="text" id="product-category" required>
-                </div>
-                <div class="form-group">
-                    <label for="product-price">Precio (USD)</label>
-                    <input type="number" id="product-price" step="0.01" required>
-                </div>
-                <p id="product-error" class="error-message hidden" aria-live="assertive"></p>
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-action="close-product-modal">Cancelar</button>
-                    <button type="submit" class="primary">Guardar</button>
-                </div>
-            </form>
-        </div>
+    <div
+      id="product-modal"
+      class="modal-overlay hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="product-modal-title"
+    >
+      <div class="modal-content">
+        <h2 id="product-modal-title">Añadir Nuevo Producto</h2>
+        <form id="product-form" novalidate>
+          <input type="hidden" id="product-id" />
+          <div class="form-group">
+            <label for="product-name">Nombre</label>
+            <input type="text" id="product-name" required />
+          </div>
+          <div class="form-group">
+            <label for="product-description">Descripción</label>
+            <textarea id="product-description" rows="3" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="product-category">Categoría</label>
+            <input type="text" id="product-category" required />
+          </div>
+          <div class="form-group">
+            <label for="product-price">Precio (USD)</label>
+            <input type="number" id="product-price" step="0.01" required />
+          </div>
+          <p
+            id="product-error"
+            class="error-message hidden"
+            aria-live="assertive"
+          ></p>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn-secondary"
+              data-action="close-product-modal"
+            >
+              Cancelar
+            </button>
+            <button type="submit" class="primary">Guardar</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <script>
-    /**
-     * @file Frontend application logic for NetSolutions E-Commerce.
-     * @author Gemini AI
-     * @version 1.0.0
-     */
+      /**
+       * @file Frontend application logic for NetSolutions E-Commerce.
+       * @author Gemini AI
+       * @version 1.0.0
+       */
 
-    // Usamos un IIFE (Immediately Invoked Function Expression) para encapsular nuestro código
-    // y no contaminar el scope global, mejorando la modularidad y evitando conflictos.
-    ((window, document) => {
-        'use strict';
+      // Usamos un IIFE (Immediately Invoked Function Expression) para encapsular nuestro código
+      // y no contaminar el scope global, mejorando la modularidad y evitando conflictos.
+      ((window, document) => {
+        "use strict";
 
         /**
          * @namespace AppConfig
          * @description Configuración global de la aplicación, inyectada por Terraform.
          */
         const AppConfig = {
-            cognitoUserPoolId: '${cognito_user_pool_id}',
-            cognitoClientId: '${cognito_app_client_id}',
-            apiUrl: '${api_url}',
-            awsRegion: 'us-east-1' // La región donde está el User Pool y la API Gateway
+          cognitoUserPoolId: "${cognito_user_pool_id}",
+          cognitoClientId: "${cognito_app_client_id}",
+          apiUrl: "${api_url}",
+          awsRegion: "us-east-1", // La región donde está el User Pool y la API Gateway
         };
 
         /**
@@ -130,46 +180,46 @@
          * @description Almacena el estado actual de la aplicación.
          */
         const AppState = {
-            isLoggedIn: false,
-            jwtToken: null,
-            products: [],
-            user: null,
+          isLoggedIn: false,
+          jwtToken: null,
+          products: [],
+          user: null,
 
-            /**
-             * Carga el estado inicial desde el almacenamiento local (localStorage).
-             */
-            loadInitialState() {
-                const token = localStorage.getItem('jwtToken');
-                if (token) {
-                    this.jwtToken = token;
-                    this.isLoggedIn = true;
-                    this.user = { email: localStorage.getItem('userEmail') };
-                }
-            },
-
-            /**
-             * Guarda el estado de autenticación en el almacenamiento local.
-             * @param {object} authResult - Resultado de la autenticación de Cognito.
-             * @param {string} email - Correo electrónico del usuario.
-             */
-            saveLoginState(authResult, email) {
-                this.jwtToken = authResult.IdToken;
-                this.isLoggedIn = true;
-                this.user = { email };
-                localStorage.setItem('jwtToken', this.jwtToken);
-                localStorage.setItem('userEmail', email);
-            },
-
-            /**
-             * Limpia el estado de autenticación.
-             */
-            clearLoginState() {
-                this.isLoggedIn = false;
-                this.jwtToken = null;
-                this.user = null;
-                localStorage.removeItem('jwtToken');
-                localStorage.removeItem('userEmail');
+          /**
+           * Carga el estado inicial desde el almacenamiento local (localStorage).
+           */
+          loadInitialState() {
+            const token = localStorage.getItem("jwtToken");
+            if (token) {
+              this.jwtToken = token;
+              this.isLoggedIn = true;
+              this.user = { email: localStorage.getItem("userEmail") };
             }
+          },
+
+          /**
+           * Guarda el estado de autenticación en el almacenamiento local.
+           * @param {object} authResult - Resultado de la autenticación de Cognito.
+           * @param {string} email - Correo electrónico del usuario.
+           */
+          saveLoginState(authResult, email) {
+            this.jwtToken = authResult.IdToken;
+            this.isLoggedIn = true;
+            this.user = { email };
+            localStorage.setItem("jwtToken", this.jwtToken);
+            localStorage.setItem("userEmail", email);
+          },
+
+          /**
+           * Limpia el estado de autenticación.
+           */
+          clearLoginState() {
+            this.isLoggedIn = false;
+            this.jwtToken = null;
+            this.user = null;
+            localStorage.removeItem("jwtToken");
+            localStorage.removeItem("userEmail");
+          },
         };
 
         /**
@@ -177,35 +227,35 @@
          * @description Almacena referencias a elementos del DOM para evitar búsquedas repetidas.
          */
         const DOMCache = {
-            authNav: document.getElementById('auth-nav'),
-            loggedOutView: document.getElementById('logged-out-view'),
-            loggedInView: document.getElementById('logged-in-view'),
-            userEmailSpan: document.getElementById('user-email'),
-            adminControls: document.getElementById('admin-controls'),
-            productGrid: document.getElementById('product-grid'),
-            authModal: { 
-                overlay: document.getElementById('auth-modal'),
-                title: document.getElementById('auth-modal-title'),
-                form: document.getElementById('auth-form'),
-                confirmPassGroup: document.getElementById('confirm-password-group'),
-                submitButton: document.getElementById('auth-submit-button'),
-                emailInput: document.getElementById('email'),
-                passwordInput: document.getElementById('password'),
-                confirmPasswordInput: document.getElementById('confirm-password'),
-                errorDisplay: document.getElementById('auth-error')
-            },
-            productModal: {
-                overlay: document.getElementById('product-modal'),
-                title: document.getElementById('product-modal-title'),
-                form: document.getElementById('product-form'),
-                idInput: document.getElementById('product-id'),
-                nameInput: document.getElementById('product-name'),
-                descriptionInput: document.getElementById('product-description'),
-                categoryInput: document.getElementById('product-category'),
-                priceInput: document.getElementById('product-price'),
-                errorDisplay: document.getElementById('product-error')
-            },
-            toastContainer: document.getElementById('toast-container')
+          authNav: document.getElementById("auth-nav"),
+          loggedOutView: document.getElementById("logged-out-view"),
+          loggedInView: document.getElementById("logged-in-view"),
+          userEmailSpan: document.getElementById("user-email"),
+          adminControls: document.getElementById("admin-controls"),
+          productGrid: document.getElementById("product-grid"),
+          authModal: {
+            overlay: document.getElementById("auth-modal"),
+            title: document.getElementById("auth-modal-title"),
+            form: document.getElementById("auth-form"),
+            confirmPassGroup: document.getElementById("confirm-password-group"),
+            submitButton: document.getElementById("auth-submit-button"),
+            emailInput: document.getElementById("email"),
+            passwordInput: document.getElementById("password"),
+            confirmPasswordInput: document.getElementById("confirm-password"),
+            errorDisplay: document.getElementById("auth-error"),
+          },
+          productModal: {
+            overlay: document.getElementById("product-modal"),
+            title: document.getElementById("product-modal-title"),
+            form: document.getElementById("product-form"),
+            idInput: document.getElementById("product-id"),
+            nameInput: document.getElementById("product-name"),
+            descriptionInput: document.getElementById("product-description"),
+            categoryInput: document.getElementById("product-category"),
+            priceInput: document.getElementById("product-price"),
+            errorDisplay: document.getElementById("product-error"),
+          },
+          toastContainer: document.getElementById("toast-container"),
         };
 
         /**
@@ -213,73 +263,102 @@
          * @description Gestiona la lógica de la interfaz de usuario.
          */
         const UIManager = {
-            /**
-             * Actualiza la visibilidad de los elementos de autenticación y administración.
-             */
-            updateAuthView() {
-                DOMCache.loggedInView.classList.toggle('hidden', !AppState.isLoggedIn);
-                DOMCache.loggedOutView.classList.toggle('hidden', AppState.isLoggedIn);
-                DOMCache.adminControls.classList.toggle('hidden', !AppState.isLoggedIn);
-                DOMCache.productGrid.classList.toggle('hidden', !AppState.isLoggedIn); // Ocultar/mostrar grid de productos
-                if (AppState.isLoggedIn && AppState.user) {
-                    DOMCache.userEmailSpan.textContent = AppState.user.email;
-                }
-            },
-
-            /**
-             * Renderiza la lista de productos en la cuadrícula.
-             */
-            renderProducts() {
-                if (!AppState.products || AppState.products.length === 0) {
-                    DOMCache.productGrid.innerHTML = '<p>No hay productos disponibles.</p>';
-                    return;
-                }
-                DOMCache.productGrid.innerHTML = AppState.products.map(product => {
-                    const adminActions = '<div class="product-card-actions"><button class="btn-secondary" data-action="show-edit-product" data-id="' + product.id + '">Editar</button><button class="btn-danger" data-action="delete-product" data-id="' + product.id + '">Borrar</button></div>';
-                    const userActions = '<button class="buy-button" data-action="purchase-product" data-id="' + product.id + '">Comprar Ahora</button>';
-
-                    return (
-                        '<div class="product-card">' +
-                            '<div class="product-card-content">' +
-                                '<h3>' + product.name + '</h3>' +
-                                '<p>' + product.description + '</p>' +
-                                '<p class="product-price">$' + product.price + ' USD</p>' +
-                                (AppState.isLoggedIn ? adminActions : userActions) +
-                            '</div>' +
-                        '</div>'
-                    );
-                }).join('');
-            },
-
-            /**
-             * Muestra u oculta un modal.
-             * @param {object} modal - Objeto modal del DOMCache.
-             * @param {boolean} show - True para mostrar, false para ocultar.
-             */
-            toggleModal(modal, show) {
-                modal.overlay.classList.toggle('hidden', !show);
-                if(show) {
-                    modal.form.reset();
-                    modal.errorDisplay.classList.add('hidden');
-                }
-            },
-
-            /**
-             * Muestra un mensaje de notificación temporal.
-             * @param {string} message - Mensaje a mostrar.
-             * @param {string} type - Tipo de mensaje ('success' o 'error').
-             */
-            showToast(message, type = 'success') {
-                const toast = document.createElement('div');
-                toast.className = `toast $${type}`;
-                toast.textContent = message;
-                DOMCache.toastContainer.appendChild(toast);
-                setTimeout(() => toast.classList.add('show'), 10); // Animar entrada
-                setTimeout(() => {
-                    toast.classList.remove('show');
-                    toast.addEventListener('transitionend', () => toast.remove());
-                }, 5000);
+          /**
+           * Actualiza la visibilidad de los elementos de autenticación y administración.
+           */
+          updateAuthView() {
+            DOMCache.loggedInView.classList.toggle(
+              "hidden",
+              !AppState.isLoggedIn
+            );
+            DOMCache.loggedOutView.classList.toggle(
+              "hidden",
+              AppState.isLoggedIn
+            );
+            DOMCache.adminControls.classList.toggle(
+              "hidden",
+              !AppState.isLoggedIn
+            );
+            DOMCache.productGrid.classList.toggle(
+              "hidden",
+              !AppState.isLoggedIn
+            ); // Ocultar/mostrar grid de productos
+            if (AppState.isLoggedIn && AppState.user) {
+              DOMCache.userEmailSpan.textContent = AppState.user.email;
             }
+          },
+
+          /**
+           * Renderiza la lista de productos en la cuadrícula.
+           */
+          renderProducts() {
+            if (!AppState.products || AppState.products.length === 0) {
+              DOMCache.productGrid.innerHTML =
+                "<p>No hay productos disponibles.</p>";
+              return;
+            }
+            DOMCache.productGrid.innerHTML = AppState.products
+              .map((product) => {
+                const adminActions =
+                  '<div class="product-card-actions"><button class="btn-secondary" data-action="show-edit-product" data-id="' +
+                  product.id +
+                  '">Editar</button><button class="btn-danger" data-action="delete-product" data-id="' +
+                  product.id +
+                  '">Borrar</button></div>';
+                const userActions =
+                  '<button class="buy-button" data-action="purchase-product" data-id="' +
+                  product.id +
+                  '">Comprar Ahora</button>';
+
+                return (
+                  '<div class="product-card">' +
+                  '<div class="product-card-content">' +
+                  "<h3>" +
+                  product.name +
+                  "</h3>" +
+                  "<p>" +
+                  product.description +
+                  "</p>" +
+                  '<p class="product-price">$' +
+                  product.price +
+                  " USD</p>" +
+                  (AppState.isLoggedIn ? adminActions : userActions) +
+                  "</div>" +
+                  "</div>"
+                );
+              })
+              .join("");
+          },
+
+          /**
+           * Muestra u oculta un modal.
+           * @param {object} modal - Objeto modal del DOMCache.
+           * @param {boolean} show - True para mostrar, false para ocultar.
+           */
+          toggleModal(modal, show) {
+            modal.overlay.classList.toggle("hidden", !show);
+            if (show) {
+              modal.form.reset();
+              modal.errorDisplay.classList.add("hidden");
+            }
+          },
+
+          /**
+           * Muestra un mensaje de notificación temporal.
+           * @param {string} message - Mensaje a mostrar.
+           * @param {string} type - Tipo de mensaje ('success' o 'error').
+           */
+          showToast(message, type = "success") {
+            const toast = document.createElement("div");
+            toast.className = `toast $${type}`;
+            toast.textContent = message;
+            DOMCache.toastContainer.appendChild(toast);
+            setTimeout(() => toast.classList.add("show"), 10); // Animar entrada
+            setTimeout(() => {
+              toast.classList.remove("show");
+              toast.addEventListener("transitionend", () => toast.remove());
+            }, 5000);
+          },
         };
 
         /**
@@ -287,32 +366,40 @@
          * @description Cliente HTTP para interactuar con la API Gateway.
          */
         const APIClient = {
-            /**
-             * Realiza una petición HTTP a la API.
-             * @param {string} endpoint - Ruta del endpoint (ej. '/products').
-             * @param {string} method - Método HTTP (GET, POST, PUT, DELETE).
-             * @param {object} body - Cuerpo de la petición para POST/PUT.
-             * @returns {Promise<object|null>} Respuesta de la API.
-             */
-            async request(endpoint, method, body = null) {
-                const headers = { 'Content-Type': 'application/json' };
-                if (AppState.jwtToken) {
-                    headers['Authorization'] = AppState.jwtToken;
-                }
-                const options = { method, headers };
-                if (body) options.body = JSON.stringify(body);
+          /**
+           * Realiza una petición HTTP a la API.
+           * @param {string} endpoint - Ruta del endpoint (ej. '/products').
+           * @param {string} method - Método HTTP (GET, POST, PUT, DELETE).
+           * @param {object} body - Cuerpo de la petición para POST/PUT.
+           * @returns {Promise<object|null>} Respuesta de la API.
+           */
+          async request(endpoint, method, body = null) {
+            const headers = { "Content-Type": "application/json" };
+            if (AppState.jwtToken) {
+              headers["Authorization"] = AppState.jwtToken;
+            }
+            const options = { method, headers };
+            if (body) options.body = JSON.stringify(body);
 
-                const response = await fetch(AppConfig.apiUrl + endpoint, options);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || `Error $${response.status}`);
-                }
-                return response.status === 204 ? null : response.json();
-            },
-            getProducts() { return this.request('/products', 'GET'); },
-            createProduct(data) { return this.request('/products', 'POST', data); },
-            updateProduct(id, data) { return this.request(`/products/$${id}`, 'PUT', data); },
-            deleteProduct(id) { return this.request(`/products/$${id}`, 'DELETE'); }
+            const response = await fetch(AppConfig.apiUrl + endpoint, options);
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || `Error $${response.status}`);
+            }
+            return response.status === 204 ? null : response.json();
+          },
+          getProducts() {
+            return this.request("/products", "GET");
+          },
+          createProduct(data) {
+            return this.request("/products", "POST", data);
+          },
+          updateProduct(id, data) {
+            return this.request(`/products/$${id}`, "PUT", data);
+          },
+          deleteProduct(id) {
+            return this.request(`/products/$${id}`, "DELETE");
+          },
         };
 
         /**
@@ -320,54 +407,60 @@
          * @description Gestiona la lógica de autenticación con Amazon Cognito.
          */
         const AuthManager = {
-            cognitoProvider: null,
-            /**
-             * Inicializa el proveedor de Cognito.
-             */
-            init() {
-                AWS.config.update({ region: AppConfig.awsRegion });
-                this.cognitoProvider = new AWS.CognitoIdentityServiceProvider();
-            },
+          cognitoProvider: null,
+          /**
+           * Inicializa el proveedor de Cognito.
+           */
+          init() {
+            AWS.config.update({ region: AppConfig.awsRegion });
+            this.cognitoProvider = new AWS.CognitoIdentityServiceProvider();
+          },
 
-            /**
-             * Registra un nuevo usuario en Cognito.
-             * @param {string} email - Correo electrónico del usuario.
-             * @param {string} password - Contraseña del usuario.
-             * @returns {Promise<object>} Resultado del registro.
-             */
-            signUp(email, password) {
-                return new Promise((resolve, reject) => {
-                    this.cognitoProvider.signUp({
-                        ClientId: AppConfig.cognitoClientId,
-                        Username: email,
-                        Password: password,
-                        UserAttributes: [{ Name: 'email', Value: email }]
-                    }, (err, data) => err ? reject(err) : resolve(data));
-                });
-            },
+          /**
+           * Registra un nuevo usuario en Cognito.
+           * @param {string} email - Correo electrónico del usuario.
+           * @param {string} password - Contraseña del usuario.
+           * @returns {Promise<object>} Resultado del registro.
+           */
+          signUp(email, password) {
+            return new Promise((resolve, reject) => {
+              this.cognitoProvider.signUp(
+                {
+                  ClientId: AppConfig.cognitoClientId,
+                  Username: email,
+                  Password: password,
+                  UserAttributes: [{ Name: "email", Value: email }],
+                },
+                (err, data) => (err ? reject(err) : resolve(data))
+              );
+            });
+          },
 
-            /**
-             * Inicia sesión de un usuario en Cognito.
-             * @param {string} email - Correo electrónico del usuario.
-             * @param {string} password - Contraseña del usuario.
-             * @returns {Promise<object>} Resultado del inicio de sesión.
-             */
-            signIn(email, password) {
-                return new Promise((resolve, reject) => {
-                    this.cognitoProvider.initiateAuth({
-                        AuthFlow: 'USER_SRP_AUTH',
-                        ClientId: AppConfig.cognitoClientId,
-                        AuthParameters: { USERNAME: email, PASSWORD: password }
-                    }, (err, data) => err ? reject(err) : resolve(data));
-                });
-            },
+          /**
+           * Inicia sesión de un usuario en Cognito.
+           * @param {string} email - Correo electrónico del usuario.
+           * @param {string} password - Contraseña del usuario.
+           * @returns {Promise<object>} Resultado del inicio de sesión.
+           */
+          signIn(email, password) {
+            return new Promise((resolve, reject) => {
+              this.cognitoProvider.initiateAuth(
+                {
+                  AuthFlow: "USER_SRP_AUTH",
+                  ClientId: AppConfig.cognitoClientId,
+                  AuthParameters: { USERNAME: email, PASSWORD: password },
+                },
+                (err, data) => (err ? reject(err) : resolve(data))
+              );
+            });
+          },
 
-            /**
-             * Cierra la sesión del usuario.
-             */
-            logout() {
-                AppState.clearLoginState();
-            }
+          /**
+           * Cierra la sesión del usuario.
+           */
+          logout() {
+            AppState.clearLoginState();
+          },
         };
 
         /**
@@ -375,176 +468,218 @@
          * @description Contiene todos los manejadores de eventos de la aplicación.
          */
         const EventHandlers = {
-            /**
-             * Inicializa todos los event listeners.
-             */
-            init() {
-                // Eventos de navegación y autenticación
-                DOMCache.authNav.addEventListener('click', this.handleAuthNavClick);
-                DOMCache.authModal.form.addEventListener('submit', this.handleAuthFormSubmit);
-                DOMCache.authModal.overlay.addEventListener('click', this.handleModalOverlayClick);
+          /**
+           * Inicializa todos los event listeners.
+           */
+          init() {
+            // Eventos de navegación y autenticación
+            DOMCache.authNav.addEventListener("click", this.handleAuthNavClick);
+            DOMCache.authModal.form.addEventListener(
+              "submit",
+              this.handleAuthFormSubmit
+            );
+            DOMCache.authModal.overlay.addEventListener(
+              "click",
+              this.handleModalOverlayClick
+            );
 
-                // Eventos de productos y administración
-                DOMCache.productModal.form.addEventListener('submit', this.handleProductFormSubmit);
-                DOMCache.productGrid.addEventListener('click', this.handleProductGridClick);
-                DOMCache.productModal.overlay.addEventListener('click', this.handleModalOverlayClick);
-                DOMCache.adminControls.querySelector('[data-action="show-add-product"]').addEventListener('click', this.handleShowAddProductClick);
-            },
+            // Eventos de productos y administración
+            DOMCache.productModal.form.addEventListener(
+              "submit",
+              this.handleProductFormSubmit
+            );
+            DOMCache.productGrid.addEventListener(
+              "click",
+              this.handleProductGridClick
+            );
+            DOMCache.productModal.overlay.addEventListener(
+              "click",
+              this.handleModalOverlayClick
+            );
+            DOMCache.adminControls
+              .querySelector('[data-action="show-add-product"]')
+              .addEventListener("click", this.handleShowAddProductClick);
+          },
 
-            /**
-             * Maneja clics en la barra de navegación de autenticación.
-             * @param {Event} e - Objeto de evento.
-             */
-            handleAuthNavClick(e) {
-                const action = e.target.dataset.action;
-                if (!action) return;
+          /**
+           * Maneja clics en la barra de navegación de autenticación.
+           * @param {Event} e - Objeto de evento.
+           */
+          handleAuthNavClick(e) {
+            const action = e.target.dataset.action;
+            if (!action) return;
 
-                if (action === 'show-login') {
-                    UIManager.toggleModal(DOMCache.authModal, true);
-                    DOMCache.authModal.title.textContent = 'Iniciar Sesión';
-                    DOMCache.authModal.submitButton.textContent = 'Acceder';
-                    DOMCache.authModal.confirmPassGroup.classList.add('hidden');
-                    DOMCache.authModal.form.dataset.mode = 'login';
-                } else if (action === 'show-register') {
-                    UIManager.toggleModal(DOMCache.authModal, true);
-                    DOMCache.authModal.title.textContent = 'Registrarse';
-                    DOMCache.authModal.submitButton.textContent = 'Crear Cuenta';
-                    DOMCache.authModal.confirmPassGroup.classList.remove('hidden');
-                    DOMCache.authModal.form.dataset.mode = 'register';
-                } else if (action === 'logout') {
-                    AuthManager.logout();
-                    UIManager.updateAuthView();
-                    UIManager.renderProducts(); // Re-renderizar para ocultar botones de admin
-                    UIManager.showToast('Has cerrado sesión.');
-                }
-            },
-
-            /**
-             * Maneja el envío del formulario de autenticación (login/registro).
-             * @param {Event} e - Objeto de evento.
-             */
-            async handleAuthFormSubmit(e) {
-                e.preventDefault();
-                const form = e.target;
-                const mode = form.dataset.mode;
-                const email = DOMCache.authModal.emailInput.value;
-                const password = DOMCache.authModal.passwordInput.value;
-                DOMCache.authModal.errorDisplay.classList.add('hidden');
-
-                try {
-                    if (mode === 'register') {
-                        const confirmPassword = DOMCache.authModal.confirmPasswordInput.value;
-                        if (password !== confirmPassword) throw new Error('Las contraseñas no coinciden.');
-                        await AuthManager.signUp(email, password);
-                        UIManager.showToast('¡Registro exitoso! Revisa tu correo para verificar la cuenta.');
-                        UIManager.toggleModal(DOMCache.authModal, false);
-                    } else { // login
-                        const result = await AuthManager.signIn(email, password);
-                        AppState.saveLoginState(result.AuthenticationResult, email);
-                        UIManager.updateAuthView();
-                        await App.loadProducts(); // Cargar productos después de iniciar sesión
-                        UIManager.showToast('¡Inicio de sesión exitoso!');
-                        UIManager.toggleModal(DOMCache.authModal, false);
-                    }
-                } catch (err) {
-                    DOMCache.authModal.errorDisplay.textContent = err.message;
-                    DOMCache.authModal.errorDisplay.classList.remove('hidden');
-                }
-            },
-
-            /**
-             * Maneja el envío del formulario de producto (crear/editar).
-             * @param {Event} e - Objeto de evento.
-             */
-            async handleProductFormSubmit(e) {
-                e.preventDefault();
-                const form = e.target;
-                const mode = form.dataset.mode;
-                const productData = {
-                    name: DOMCache.productModal.nameInput.value,
-                    description: DOMCache.productModal.descriptionInput.value,
-                    category: DOMCache.productModal.categoryInput.value,
-                    price: parseFloat(DOMCache.productModal.priceInput.value),
-                };
-
-                try {
-                    if (mode === 'edit') {
-                        await APIClient.updateProduct(DOMCache.productModal.idInput.value, productData);
-                        UIManager.showToast('Producto actualizado con éxito.');
-                    } else {
-                        await APIClient.createProduct(productData);
-                        UIManager.showToast('Producto creado con éxito.');
-                    }
-                    UIManager.toggleModal(DOMCache.productModal, false);
-                    await App.loadProducts(); // Recargar la lista
-                } catch (err) {
-                    DOMCache.productModal.errorDisplay.textContent = err.message;
-                    DOMCache.productModal.errorDisplay.classList.remove('hidden');
-                }
-            },
-
-            /**
-             * Maneja clics en la cuadrícula de productos (botones de editar/borrar/comprar).
-             * @param {Event} e - Objeto de evento.
-             */
-            async handleProductGridClick(e) {
-                const action = e.target.dataset.action;
-                const id = e.target.dataset.id;
-                if (!action || !id) return;
-
-                if (action === 'show-edit-product') {
-                    const product = AppState.products.find(p => p.id === id);
-                    if (product) {
-                        UIManager.toggleModal(DOMCache.productModal, true);
-                        DOMCache.productModal.title.textContent = 'Editar Producto';
-                        DOMCache.productModal.form.dataset.mode = 'edit';
-                        DOMCache.productModal.idInput.value = product.id;
-                        DOMCache.productModal.nameInput.value = product.name;
-                        DOMCache.productModal.descriptionInput.value = product.description;
-                        DOMCache.productModal.categoryInput.value = product.category;
-                        DOMCache.productModal.priceInput.value = product.price;
-                    }
-                } else if (action === 'delete-product') {
-                    if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-                        try {
-                            await APIClient.deleteProduct(id);
-                            UIManager.showToast('Producto eliminado con éxito.');
-                            await App.loadProducts();
-                        } catch (err) {
-                            UIManager.showToast(`Error al eliminar: ${err.message}`, 'error');
-                        }
-                    }
-                } else if (action === 'purchase-product') {
-                    UIManager.showToast('Para comprar, por favor, inicie sesión.', 'error');
-                }
-            },
-
-            /**
-             * Maneja clics en el overlay de los modales para cerrarlos.
-             * @param {Event} e - Objeto de evento.
-             */
-            handleModalOverlayClick(e) {
-                const action = e.target.dataset.action;
-                if (e.target === DOMCache.authModal.overlay && action === 'close-auth-modal') {
-                    UIManager.toggleModal(DOMCache.authModal, false);
-                } else if (e.target === DOMCache.productModal.overlay && action === 'close-product-modal') {
-                    UIManager.toggleModal(DOMCache.productModal, false);
-                } else if (e.target.dataset.action === 'close-auth-modal') { // Botón Cancelar dentro del modal de auth
-                    UIManager.toggleModal(DOMCache.authModal, false);
-                } else if (e.target.dataset.action === 'close-product-modal') { // Botón Cancelar dentro del modal de producto
-                    UIManager.toggleModal(DOMCache.productModal, false);
-                }
-            },
-
-            /**
-             * Maneja el clic en el botón de añadir producto.
-             */
-            handleShowAddProductClick() {
-                UIManager.toggleModal(DOMCache.productModal, true);
-                DOMCache.productModal.title.textContent = 'Añadir Nuevo Producto';
-                DOMCache.productModal.form.dataset.mode = 'create';
-                DOMCache.productModal.idInput.value = '';
+            if (action === "show-login") {
+              UIManager.toggleModal(DOMCache.authModal, true);
+              DOMCache.authModal.title.textContent = "Iniciar Sesión";
+              DOMCache.authModal.submitButton.textContent = "Acceder";
+              DOMCache.authModal.confirmPassGroup.classList.add("hidden");
+              DOMCache.authModal.form.dataset.mode = "login";
+            } else if (action === "show-register") {
+              UIManager.toggleModal(DOMCache.authModal, true);
+              DOMCache.authModal.title.textContent = "Registrarse";
+              DOMCache.authModal.submitButton.textContent = "Crear Cuenta";
+              DOMCache.authModal.confirmPassGroup.classList.remove("hidden");
+              DOMCache.authModal.form.dataset.mode = "register";
+            } else if (action === "logout") {
+              AuthManager.logout();
+              UIManager.updateAuthView();
+              UIManager.renderProducts(); // Re-renderizar para ocultar botones de admin
+              UIManager.showToast("Has cerrado sesión.");
             }
+          },
+
+          /**
+           * Maneja el envío del formulario de autenticación (login/registro).
+           * @param {Event} e - Objeto de evento.
+           */
+          async handleAuthFormSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const mode = form.dataset.mode;
+            const email = DOMCache.authModal.emailInput.value;
+            const password = DOMCache.authModal.passwordInput.value;
+            DOMCache.authModal.errorDisplay.classList.add("hidden");
+
+            try {
+              if (mode === "register") {
+                const confirmPassword =
+                  DOMCache.authModal.confirmPasswordInput.value;
+                if (password !== confirmPassword)
+                  throw new Error("Las contraseñas no coinciden.");
+                await AuthManager.signUp(email, password);
+                UIManager.showToast(
+                  "¡Registro exitoso! Revisa tu correo para verificar la cuenta."
+                );
+                UIManager.toggleModal(DOMCache.authModal, false);
+              } else {
+                // login
+                const result = await AuthManager.signIn(email, password);
+                AppState.saveLoginState(result.AuthenticationResult, email);
+                UIManager.updateAuthView();
+                await App.loadProducts(); // Cargar productos después de iniciar sesión
+                UIManager.showToast("¡Inicio de sesión exitoso!");
+                UIManager.toggleModal(DOMCache.authModal, false);
+              }
+            } catch (err) {
+              DOMCache.authModal.errorDisplay.textContent = err.message;
+              DOMCache.authModal.errorDisplay.classList.remove("hidden");
+            }
+          },
+
+          /**
+           * Maneja el envío del formulario de producto (crear/editar).
+           * @param {Event} e - Objeto de evento.
+           */
+          async handleProductFormSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const mode = form.dataset.mode;
+            const productData = {
+              name: DOMCache.productModal.nameInput.value,
+              description: DOMCache.productModal.descriptionInput.value,
+              category: DOMCache.productModal.categoryInput.value,
+              price: parseFloat(DOMCache.productModal.priceInput.value),
+            };
+
+            try {
+              if (mode === "edit") {
+                await APIClient.updateProduct(
+                  DOMCache.productModal.idInput.value,
+                  productData
+                );
+                UIManager.showToast("Producto actualizado con éxito.");
+              } else {
+                await APIClient.createProduct(productData);
+                UIManager.showToast("Producto creado con éxito.");
+              }
+              UIManager.toggleModal(DOMCache.productModal, false);
+              await App.loadProducts(); // Recargar la lista
+            } catch (err) {
+              DOMCache.productModal.errorDisplay.textContent = err.message;
+              DOMCache.productModal.errorDisplay.classList.remove("hidden");
+            }
+          },
+
+          /**
+           * Maneja clics en la cuadrícula de productos (botones de editar/borrar/comprar).
+           * @param {Event} e - Objeto de evento.
+           */
+          async handleProductGridClick(e) {
+            const action = e.target.dataset.action;
+            const id = e.target.dataset.id;
+            if (!action || !id) return;
+
+            if (action === "show-edit-product") {
+              const product = AppState.products.find((p) => p.id === id);
+              if (product) {
+                UIManager.toggleModal(DOMCache.productModal, true);
+                DOMCache.productModal.title.textContent = "Editar Producto";
+                DOMCache.productModal.form.dataset.mode = "edit";
+                DOMCache.productModal.idInput.value = product.id;
+                DOMCache.productModal.nameInput.value = product.name;
+                DOMCache.productModal.descriptionInput.value =
+                  product.description;
+                DOMCache.productModal.categoryInput.value = product.category;
+                DOMCache.productModal.priceInput.value = product.price;
+              }
+            } else if (action === "delete-product") {
+              if (
+                confirm("¿Estás seguro de que quieres eliminar este producto?")
+              ) {
+                try {
+                  await APIClient.deleteProduct(id);
+                  UIManager.showToast("Producto eliminado con éxito.");
+                  await App.loadProducts();
+                } catch (err) {
+                  UIManager.showToast(
+                    `Error al eliminar: ${err.message}`,
+                    "error"
+                  );
+                }
+              }
+            } else if (action === "purchase-product") {
+              UIManager.showToast(
+                "Para comprar, por favor, inicie sesión.",
+                "error"
+              );
+            }
+          },
+
+          /**
+           * Maneja clics en el overlay de los modales para cerrarlos.
+           * @param {Event} e - Objeto de evento.
+           */
+          handleModalOverlayClick(e) {
+            const action = e.target.dataset.action;
+            if (
+              e.target === DOMCache.authModal.overlay &&
+              action === "close-auth-modal"
+            ) {
+              UIManager.toggleModal(DOMCache.authModal, false);
+            } else if (
+              e.target === DOMCache.productModal.overlay &&
+              action === "close-product-modal"
+            ) {
+              UIManager.toggleModal(DOMCache.productModal, false);
+            } else if (e.target.dataset.action === "close-auth-modal") {
+              // Botón Cancelar dentro del modal de auth
+              UIManager.toggleModal(DOMCache.authModal, false);
+            } else if (e.target.dataset.action === "close-product-modal") {
+              // Botón Cancelar dentro del modal de producto
+              UIManager.toggleModal(DOMCache.productModal, false);
+            }
+          },
+
+          /**
+           * Maneja el clic en el botón de añadir producto.
+           */
+          handleShowAddProductClick() {
+            UIManager.toggleModal(DOMCache.productModal, true);
+            DOMCache.productModal.title.textContent = "Añadir Nuevo Producto";
+            DOMCache.productModal.form.dataset.mode = "create";
+            DOMCache.productModal.idInput.value = "";
+          },
         };
 
         /**
@@ -552,51 +687,64 @@
          * @description Módulo principal de la aplicación.
          */
         const App = {
-            /**
-             * Inicializa la aplicación.
-             */
-            async init() {
-                AuthManager.init();
-                AppState.loadInitialState();
-                EventHandlers.init(); // Inicializar eventos primero
+          /**
+           * Inicializa la aplicación.
+           */
+          async init() {
+            AuthManager.init();
+            AppState.loadInitialState();
 
-                console.log('App.init() - AppState.isLoggedIn:', AppState.isLoggedIn);
+            // 🔹 Forzar actualización de la vista antes de asignar eventos
+            UIManager.updateAuthView();
 
-                if (!AppState.isLoggedIn) {
-                    console.log('App.init() - User not logged in, showing auth modal.');
-                    UIManager.toggleModal(DOMCache.authModal, true);
-                    DOMCache.authModal.form.dataset.mode = 'login'; // Por defecto, mostrar login
-                    DOMCache.authModal.title.textContent = 'Iniciar Sesión';
-                    DOMCache.authModal.submitButton.textContent = 'Acceder';
-                    DOMCache.authModal.confirmPassGroup.classList.add('hidden');
-                } else {
-                    console.log('App.init() - User logged in, updating UI and loading products.');
-                    UIManager.updateAuthView();
-                    await this.loadProducts();
-                }
-            },
+            // 🔹 Luego inicializa los listeners
+            EventHandlers.init();
 
-            /**
-             * Carga los productos desde la API y actualiza la UI.
-             */
-            async loadProducts() {
-                try {
-                    DOMCache.productGrid.innerHTML = '<p class="loader">Cargando productos...</p>';
-                    AppState.products = await APIClient.getProducts();
-                    UIManager.renderProducts();
-                } catch (err) {
-                    DOMCache.productGrid.innerHTML = '<p>Error al cargar los productos.</p>';
-                    UIManager.showToast(`Error al cargar productos: ${err.message}`, 'error');
-                    console.error(err);
-                }
+            console.log(
+              "App.init() - AppState.isLoggedIn:",
+              AppState.isLoggedIn
+            );
+
+            if (!AppState.isLoggedIn) {
+              console.log(
+                "App.init() - User not logged in, showing auth modal."
+              );
+              UIManager.toggleModal(DOMCache.authModal, true);
+              DOMCache.authModal.form.dataset.mode = "login"; // Por defecto, login
+              DOMCache.authModal.title.textContent = "Iniciar Sesión";
+              DOMCache.authModal.submitButton.textContent = "Acceder";
+              DOMCache.authModal.confirmPassGroup.classList.add("hidden");
+            } else {
+              console.log(
+                "App.init() - User logged in, updating UI and loading products."
+              );
+              await this.loadProducts();
             }
+          },
+          /**
+           * Carga los productos desde la API y actualiza la UI.
+           */
+          async loadProducts() {
+            try {
+              DOMCache.productGrid.innerHTML =
+                '<p class="loader">Cargando productos...</p>';
+              AppState.products = await APIClient.getProducts();
+              UIManager.renderProducts();
+            } catch (err) {
+              DOMCache.productGrid.innerHTML =
+                "<p>Error al cargar los productos.</p>";
+              UIManager.showToast(
+                `Error al cargar productos: ${err.message}`,
+                "error"
+              );
+              console.error(err);
+            }
+          },
         };
 
         // --- ARRANQUE DE LA APLICACIÓN ---
-        document.addEventListener('DOMContentLoaded', () => App.init());
-
-    })(window, document);
+        document.addEventListener("DOMContentLoaded", () => App.init());
+      })(window, document);
     </script>
-
-</body>
+  </body>
 </html>
