@@ -41,6 +41,8 @@ module "lambda_api" {
   dynamodb_table_arn      = module.dynamodb.table_arn
   cognito_user_pool_arn   = module.cognito.user_pool_arn
   cognito_app_client_id = module.cognito.app_client_id
+  aws_region              = var.aws_region
+  cognito_user_pool_id    = module.cognito.user_pool_id
 }
 
 # --- Módulos de Red y DNS ---

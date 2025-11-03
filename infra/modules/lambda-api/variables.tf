@@ -23,3 +23,13 @@ variable "cognito_app_client_id" {
   description = "ID del App Client de Cognito para la audiencia del autorizador"
 }
 
+variable "aws_region" {
+  type        = string
+  description = "Región de AWS donde se despliega la API"
+}
+
+variable "cognito_user_pool_id" {
+  type        = string
+  description = "ID del User Pool de Cognito para el autorizador de la API"
+}
+

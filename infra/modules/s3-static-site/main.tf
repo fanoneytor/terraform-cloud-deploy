@@ -54,7 +54,7 @@ resource "aws_s3_object" "website_index" {
     cognito_user_pool_id    = var.cognito_user_pool_id
     cognito_app_client_id = var.cognito_app_client_id
   })
-  etag = filemd5(templatefile("${var.website_source_path}/index.html", {
+  etag = md5(templatefile("${var.website_source_path}/index.html", {
     api_url                 = var.api_gateway_url
     cognito_user_pool_id    = var.cognito_user_pool_id
     cognito_app_client_id = var.cognito_app_client_id
