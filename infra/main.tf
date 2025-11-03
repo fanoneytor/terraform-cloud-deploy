@@ -27,7 +27,7 @@ module "dynamodb" {
 
 module "lambda_api" {
   source              = "./modules/lambda-api"
-  lambda_source_path  = "${path.root}/backend"
+  lambda_source_path  = "${path.module}/../src/backend"
   dynamodb_table_name = module.dynamodb.table_name
   dynamodb_table_arn  = module.dynamodb.table_arn
 }
