@@ -13,3 +13,13 @@ variable "dynamodb_table_arn" {
   description = "ARN de la tabla DynamoDB"
 }
 
+variable "cognito_user_pool_arn" {
+  type        = string
+  description = "ARN del User Pool de Cognito para el autorizador de la API"
+}
+
+variable "cognito_app_client_id" {
+  type        = string
+  description = "ID del App Client de Cognito para la audiencia del autorizador"
+}
+

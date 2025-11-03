@@ -1,0 +1,42 @@
+# Terraform Core Files
+# Estos archivos son específicos de cada despliegue y pueden contener información sensible.
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+crash.log
+
+# Archivos de variables locales que no deben ser compartidos
+*.tfvars
+*.tfvars.json
+
+# Archivos de override que son para uso local
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Archivo de bloqueo de dependencias de Terraform. 
+# Es recomendable subirlo, pero se puede ignorar en proyectos de una sola persona.
+# .terraform.lock.hcl
+
+# --- Artefactos de Construcción ---
+
+# Paquete ZIP de la función Lambda generado por Terraform
+/infra/modules/lambda-api/lambda.zip
+
+# Dependencias de Node.js
+/src/backend/node_modules/
+
+# --- Archivos del Sistema Operativo y Editores ---
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# JetBrains
+.idea/

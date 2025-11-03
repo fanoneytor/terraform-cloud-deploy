@@ -10,68 +10,41 @@ variable "api_name" {
   default     = "serverless-api"
 }
 
+# --- ROL Y POLÍTICAS DE IAM ---
 resource "aws_iam_role" "lambda_exec" {
   name = "${var.lambda_function_name}-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "lambda.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
+    Statement = [{ Effect = "Allow", Principal = { Service = "lambda.amazonaws.com" }, Action = "sts:AssumeRole" }]
   })
 }
 
-resource "aws_iam_policy" "lambda_logging" {
-  name        = "${var.lambda_function_name}-logging-policy"
-  description = "Política de IAM para los logs de la función Lambda"
+resource "aws_iam_policy" "main_policy" {
+  name        = "${var.lambda_function_name}-main-policy"
+  description = "Política de IAM para logs y acceso a DynamoDB para la función Lambda"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+        Effect   = "Allow",
         Resource = "arn:aws:logs:*:*:*"
       },
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_logs_attachment" {
-  role       = aws_iam_role.lambda_exec.name
-  policy_arn = aws_iam_policy.lambda_logging.arn
-}
-
-resource "aws_iam_policy" "dynamodb_access" {
-  name   = "${var.lambda_function_name}-dynamodb-policy"
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
       {
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:Scan",
-          "dynamodb:Query"
-        ]
-        Effect   = "Allow"
+        Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:Scan", "dynamodb:Query"],
+        Effect   = "Allow",
         Resource = var.dynamodb_table_arn
-      },
+      }
     ]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "dynamodb_attachment" {
+resource "aws_iam_role_policy_attachment" "main_attachment" {
   role       = aws_iam_role.lambda_exec.name
-  policy_arn = aws_iam_policy.dynamodb_access.arn
+  policy_arn = aws_iam_policy.main_policy.arn
 }
 
+# --- FUNCIÓN LAMBDA ---
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = var.lambda_source_path
@@ -85,7 +58,7 @@ resource "aws_lambda_function" "api" {
   handler          = "index.handler"
   runtime          = "nodejs18.x"
   role             = aws_iam_role.lambda_exec.arn
-  timeout          = 10
+  timeout          = 20
 
   environment {
     variables = {
@@ -94,9 +67,27 @@ resource "aws_lambda_function" "api" {
   }
 }
 
+# --- API GATEWAY Y AUTENTICACIÓN ---
 resource "aws_apigatewayv2_api" "http_api" {
   name          = var.api_name
   protocol_type = "HTTP"
+  cors_configuration {
+    allow_origins = ["*"]
+    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allow_headers = ["Content-Type", "Authorization"]
+  }
+}
+
+resource "aws_apigatewayv2_authorizer" "cognito_auth" {
+  api_id           = aws_apigatewayv2_api.http_api.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "cognito-authorizer"
+
+  jwt_configuration {
+    audience = [var.cognito_app_client_id]
+    issuer   = var.cognito_user_pool_arn
+  }
 }
 
 resource "aws_apigatewayv2_integration" "lambda_integration" {
@@ -106,12 +97,29 @@ resource "aws_apigatewayv2_integration" "lambda_integration" {
   payload_format_version = "2.0"
 }
 
-resource "aws_apigatewayv2_route" "route" {
+# --- RUTAS DE LA API ---
+
+# Rutas públicas (no requieren autenticación)
+resource "aws_apigatewayv2_route" "public_routes" {
+  for_each = toset(["GET /products", "GET /products/{id}", "POST /products/{id}/purchase"])
+
   api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = "ANY /{proxy+}"
+  route_key = each.value
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
+# Rutas protegidas (requieren token JWT de Cognito)
+resource "aws_apigatewayv2_route" "protected_routes" {
+  for_each = toset(["POST /products", "PUT /products/{id}", "DELETE /products/{id}"])
+
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = each.value
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.cognito_auth.id
+  authorization_type = "JWT"
+}
+
+# Permiso para que API Gateway invoque la Lambda
 resource "aws_lambda_permission" "api_gw" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
@@ -120,6 +128,7 @@ resource "aws_lambda_permission" "api_gw" {
   source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*"
 }
 
+# --- SALIDAS ---
 output "api_url" {
   description = "Endpoint público de la API Gateway"
   value       = aws_apigatewayv2_api.http_api.api_endpoint

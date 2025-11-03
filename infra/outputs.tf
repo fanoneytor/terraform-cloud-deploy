@@ -12,3 +12,13 @@ output "s3_bucket_name" {
   description = "Nombre del bucket S3 donde se alojan los archivos del sitio."
   value       = module.s3_static_site.bucket_id
 }
+
+output "cognito_user_pool_id" {
+  description = "ID del User Pool de Cognito."
+  value       = module.cognito.user_pool_id
+}
+
+output "cognito_app_client_id" {
+  description = "ID del App Client de Cognito."
+  value       = module.cognito.app_client_id
+}

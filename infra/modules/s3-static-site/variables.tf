@@ -14,3 +14,13 @@ variable "api_gateway_url" {
   default     = ""
 }
 
+variable "cognito_user_pool_id" {
+  type        = string
+  description = "ID del User Pool de Cognito para el frontend"
+}
+
+variable "cognito_app_client_id" {
+  type        = string
+  description = "ID del App Client de Cognito para el frontend"
+}
+
