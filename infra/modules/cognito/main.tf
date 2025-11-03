@@ -29,6 +29,15 @@ resource "aws_cognito_user_pool" "main" {
   }
 }
 
+resource "aws_lambda_permission" "allow_cognito_to_call_pre_signup" {
+  count         = var.pre_signup_lambda_arn != null ? 1 : 0
+  statement_id  = "AllowExecutionFromCognito"
+  action        = "lambda:InvokeFunction"
+  function_name = split(":", var.pre_signup_lambda_arn)[6]
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = aws_cognito_user_pool.main.arn
+}
+
 resource "aws_cognito_user_pool_client" "main" {
   name         = var.app_client_name
   user_pool_id = aws_cognito_user_pool.main.id
