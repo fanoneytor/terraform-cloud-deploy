@@ -4,10 +4,10 @@ resource "aws_cognito_user_pool" "main" {
   auto_verified_attributes = ["email"]
 
   schema {
-    name                     = "email"
-    attribute_data_type      = "String"
-    required                 = true
-    mutable                  = true
+    name                = "email"
+    attribute_data_type = "String"
+    required            = true
+    mutable             = true
   }
 
   password_policy {
@@ -25,12 +25,16 @@ resource "aws_cognito_user_pool" "main" {
 }
 
 resource "aws_cognito_user_pool_client" "main" {
-  name = var.app_client_name
+  name         = var.app_client_name
   user_pool_id = aws_cognito_user_pool.main.id
 
   # Habilita el flujo de autenticación necesario para el SDK de JS
-  explicit_auth_flows = ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
-  
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_USER_SRP_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH"
+  ]
+
   # No generar un secreto de cliente, ya que es una app pública de frontend
   generate_secret = false
 }
