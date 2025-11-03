@@ -33,3 +33,9 @@ variable "cognito_user_pool_id" {
   description = "ID del User Pool de Cognito para el autorizador de la API"
 }
 
+variable "pre_signup_lambda_source_path" {
+  type        = string
+  description = "Ruta a la carpeta con el código fuente de la función Lambda de pre-registro de Cognito"
+  default     = ""
+}
+

@@ -18,6 +18,7 @@ module "cognito" {
   source = "./modules/cognito"
   # Usamos el nombre del bucket como prefijo para el nombre del pool
   user_pool_name = "${var.bucket_name}-user-pool"
+  pre_signup_lambda_arn = module.lambda_api.pre_signup_lambda_arn
 }
 
 module "s3_static_site" {
@@ -37,6 +38,7 @@ module "dynamodb" {
 module "lambda_api" {
   source                = "./modules/lambda-api"
   lambda_source_path    = "${path.module}/../src/backend"
+  pre_signup_lambda_source_path = "${path.module}/../src/backend"
   dynamodb_table_name   = module.dynamodb.table_name
   dynamodb_table_arn    = module.dynamodb.table_arn
   cognito_user_pool_arn = module.cognito.user_pool_arn

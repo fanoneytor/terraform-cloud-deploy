@@ -1,7 +1,7 @@
 resource "aws_cognito_user_pool" "main" {
   name = var.user_pool_name
 
-  auto_verified_attributes = ["email"]
+  auto_verified_attributes = []
 
   schema {
     name                = "email"
@@ -21,6 +21,11 @@ resource "aws_cognito_user_pool" "main" {
   # Permite que los usuarios se registren por sí mismos
   admin_create_user_config {
     allow_admin_create_user_only = false
+  }
+
+  # Configuración de Lambda para pre-registro
+  lambda_config {
+    pre_sign_up = var.pre_signup_lambda_arn
   }
 }
 
