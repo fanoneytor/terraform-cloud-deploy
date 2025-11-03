@@ -185,7 +185,7 @@
             },
             showToast(message, type = 'success') {
                 const toast = document.createElement('div');
-                toast.className = `toast ${type}`;
+                toast.className = `toast $${type}`;
                 toast.textContent = message;
                 dom.toastContainer.appendChild(toast);
                 setTimeout(() => toast.classList.add('show'), 10); // Animar entrada
@@ -209,14 +209,14 @@
                 const response = await fetch(config.apiUrl + endpoint, options);
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.message || `Error ${response.status}`);
+                    throw new Error(errorData.message || `Error $${response.status}`);
                 }
                 return response.status === 204 ? null : response.json();
             },
             getProducts() { return this.request('/products', 'GET'); },
             createProduct(data) { return this.request('/products', 'POST', data); },
-            updateProduct(id, data) { return this.request(`/products/${id}`, 'PUT', data); },
-            deleteProduct(id) { return this.request(`/products/${id}`, 'DELETE'); }
+            updateProduct(id, data) { return this.request(`/products/$${id}`, 'PUT', data); },
+            deleteProduct(id) { return this.request(`/products/$${id}`, 'DELETE'); }
         };
 
         // --- 5. LÓGICA DE AUTENTICACIÓN (COGNITO) --- //
@@ -373,7 +373,7 @@
                                 main.loadProducts();
                             })
                             .catch(err => {
-                                ui.showToast(`Error al eliminar: ${err.message}`, 'error');
+                                ui.showToast(`Error al eliminar: $${err.message}`, 'error');
                             });
                     }
                 } else if (action === 'purchase-product') {
